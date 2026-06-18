@@ -34,6 +34,60 @@ ANTLR_JAR_GLOB = os.path.join(EXTERNAL_DIR, "antlr-*-complete.jar")
 PREFERRED_PYTHON_MINOR = 12
 
 
+def _normalize_path(path):
+    return os.path.normcase(os.path.abspath(os.path.normpath(path)))
+
+
+def _project_venv_root():
+    """Return the project venv directory if it looks like a venv."""
+    for candidate in (VENV_DIR, os.path.join(ROOT, ".venv")):
+        if os.path.isfile(os.path.join(candidate, "pyvenv.cfg")):
+            return candidate
+    return None
+
+
+def _running_in_venv(venv_root):
+    if venv_root and _normalize_path(sys.prefix) == _normalize_path(venv_root):
+        return True
+    virtual_env = os.environ.get("VIRTUAL_ENV")
+    return bool(
+        venv_root
+        and virtual_env
+        and _normalize_path(virtual_env) == _normalize_path(venv_root)
+    )
+
+
+def _iter_venv_python_paths(venv_root):
+    if sys.platform == "win32":
+        yield from (
+            os.path.join(venv_root, "Scripts", "python.exe"),
+            os.path.join(venv_root, "Scripts", "python3.exe"),
+            os.path.join(venv_root, "bin", "python.exe"),
+            os.path.join(venv_root, "bin", "python"),
+            os.path.join(venv_root, "bin", "python3"),
+        )
+        for match in sorted(glob.glob(os.path.join(venv_root, "Scripts", "python*.exe"))):
+            if "pythonw" not in os.path.basename(match).lower():
+                yield match
+    else:
+        yield from (
+            os.path.join(venv_root, "bin", "python3"),
+            os.path.join(venv_root, "bin", "python"),
+        )
+
+
+def _iter_venv_pip_paths(venv_root):
+    if sys.platform == "win32":
+        yield from (
+            os.path.join(venv_root, "Scripts", "pip.exe"),
+            os.path.join(venv_root, "Scripts", "pip3.exe"),
+            os.path.join(venv_root, "bin", "pip.exe"),
+            os.path.join(venv_root, "bin", "pip"),
+        )
+    else:
+        yield os.path.join(venv_root, "bin", "pip")
+
+
 # --------------------------------------------------------------------------- #
 #  Helpers                                                                    #
 # --------------------------------------------------------------------------- #
@@ -52,21 +106,47 @@ def _which(name):
 
 
 def _venv_python():
-    if sys.platform == "win32":
-        path = os.path.join(VENV_DIR, "Scripts", "python.exe")
-        return path if os.path.isfile(path) else None
-    for name in ("python", "python3"):
-        path = os.path.join(VENV_DIR, "bin", name)
+    venv_root = _project_venv_root()
+    if venv_root and _running_in_venv(venv_root) and os.path.isfile(sys.executable):
+        return sys.executable
+    if not venv_root:
+        return None
+    for path in _iter_venv_python_paths(venv_root):
         if os.path.isfile(path):
             return path
     return None
 
 
 def _venv_pip():
-    if sys.platform == "win32":
-        path = os.path.join(VENV_DIR, "Scripts", "pip.exe")
-        return path if os.path.isfile(path) else None
-    return os.path.join(VENV_DIR, "bin", "pip")
+    venv_root = _project_venv_root()
+    if not venv_root:
+        return None
+    for path in _iter_venv_pip_paths(venv_root):
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+def _venv_python_error():
+    venv_root = _project_venv_root()
+    if venv_root:
+        print(f"Project virtual environment found at {venv_root},")
+        print("but its Python executable could not be located.")
+        print(f"  Current interpreter: {sys.executable}")
+        print(f"  sys.prefix:          {sys.prefix}")
+        if os.environ.get("VIRTUAL_ENV"):
+            print(f"  VIRTUAL_ENV:         {os.environ['VIRTUAL_ENV']}")
+        if sys.platform == "win32":
+            print("On Windows, use `python run.py test-*` (not `python3`) after activating venv.")
+        print("Try recreating it: `python run.py setup`")
+        return
+    if os.environ.get("VIRTUAL_ENV") or os.environ.get("CONDA_DEFAULT_ENV"):
+        print("A virtual environment is active, but not the project one.")
+        print(f"  Current interpreter: {sys.executable}")
+        print(f"  Expected venv at:    {VENV_DIR}")
+        print("Run `python run.py setup`, then use `python run.py test-*` from the project folder.")
+        return
+    print("Virtual environment not found. Run `python run.py setup` first.")
 
 
 def _parse_python_minor(version_text):
@@ -137,7 +217,7 @@ def _ensure_build():
 def _run_pytest(test_path):
     venv_py = _venv_python()
     if not venv_py:
-        print("Virtual environment not found. Run `python3 run.py setup` first.")
+        _venv_python_error()
         return 1
 
     pip_check = subprocess.run(
@@ -191,20 +271,24 @@ def cmd_check():
         print(f"ANTLR:  NOT FOUND (run: python3 run.py setup)")
         ok = False
 
-    venv_py = _venv_python()
-    if not venv_py:
-        print("venv:   NOT created (run: python3 run.py setup)")
+    venv_root = _project_venv_root()
+    if not venv_root:
+        print("venv:   NOT created (run: python run.py setup)")
     else:
-        print(f"venv:   found at {VENV_DIR}")
-        dep_check = subprocess.run(
-            [venv_py, "-c", "import antlr4, pytest"],
-            capture_output=True,
-            text=True,
-        )
-        if dep_check.returncode == 0:
-            print("deps:   antlr4-python3-runtime and pytest installed in venv")
+        print(f"venv:   found at {venv_root}")
+        venv_py = _venv_python()
+        if not venv_py:
+            print("deps:   could not locate venv Python (try `python run.py setup`)")
         else:
-            print("deps:   NOT installed in venv (run: python3 run.py setup)")
+            dep_check = subprocess.run(
+                [venv_py, "-c", "import antlr4, pytest"],
+                capture_output=True,
+                text=True,
+            )
+            if dep_check.returncode == 0:
+                print("deps:   antlr4-python3-runtime and pytest installed in venv")
+            else:
+                print("deps:   NOT installed in venv (run: python run.py setup)")
 
     print("\nAll required tools present." if ok else "\nSome required tools are missing.")
     return 0 if ok else 1
@@ -234,8 +318,9 @@ def cmd_setup():
         return 1
 
     pip = _venv_pip()
-    if not os.path.isfile(pip):
+    if not pip:
         print("ERROR: pip not found in the virtual environment.")
+        print("Try recreating the venv: `python run.py setup`")
         return 1
 
     res = _run([pip, "install", "--upgrade", "pip"])

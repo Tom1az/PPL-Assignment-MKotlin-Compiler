@@ -188,7 +188,7 @@ python3 run.py build
 
 `setup` downloads the ANTLR jar into `external/` and installs Python packages into `venv/`. Tests always run through the project virtual environment (`venv/Scripts/python.exe -m pytest` on Windows), so you do not need to activate the venv manually.
 
-On Windows, if `python3` is not available, use `py run.py setup` instead. If `pytest --version` works but `python3 run.py test-lexer` fails, the global `pytest` command is tied to a different Python — always use `python3 run.py test-*` (or `py run.py test-*`).
+On Windows, if `python3` is not available, use `py run.py setup` instead. After activating the project venv, prefer `python run.py test-*` — on Windows `python3` often still points to a different interpreter even when the prompt shows `(venv)`.
 
 ### Run tests
 
