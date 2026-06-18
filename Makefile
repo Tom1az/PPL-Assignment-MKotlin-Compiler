@@ -1,5 +1,13 @@
 # MKotlin compiler - convenience wrapper around run.py
+ROOT := $(CURDIR)
+VENV_DIR := $(ROOT)/venv
 PY ?= python3
+
+ifeq ($(OS),Windows_NT)
+VENV_PYTHON := $(VENV_DIR)/Scripts/python.exe
+else
+VENV_PYTHON := $(VENV_DIR)/bin/python
+endif
 
 .PHONY: check setup build clean test-lexer test-parser test-ast test-checker test-codegen test
 
@@ -12,20 +20,8 @@ setup:
 build:
 	$(PY) run.py build
 
-test-lexer:
-	$(PY) run.py test-lexer
-
-test-parser:
-	$(PY) run.py test-parser
-
-test-ast:
-	$(PY) run.py test-ast
-
-test-checker:
-	$(PY) run.py test-checker
-
-test-codegen:
-	$(PY) run.py test-codegen
+test-lexer test-parser test-ast test-checker test-codegen:
+	$(PY) run.py $@
 
 test: test-lexer test-parser test-ast test-checker test-codegen
 

@@ -137,8 +137,7 @@ Traverse the AST with `ASTVisitor`; generate valid, assembling-and-running Jasmi
 ├── mkotlin_specification.md
 ├── mkotlin-ast_representation.md
 ├── mkotlin-semantic_constraints_and_errors.md
-├── external/
-│   └── README.md          # place antlr-4.13.2-complete.jar here
+├── external/              # ANTLR jar (downloaded by `run.py setup`)
 ├── src/
 │   ├── astgen/
 │   │   └── ast_generation.py      # ASTGeneration — student implementation
@@ -183,13 +182,13 @@ Traverse the AST with `ASTVisitor`; generate valid, assembling-and-running Jasmi
 
 ```bash
 python3 run.py check
-python3 run.py setup
-# macOS/Linux:
-source venv/bin/activate
-# Windows:
-venv\Scripts\activate
+python3 run.py setup    # creates venv, downloads ANTLR, installs dependencies
 python3 run.py build
 ```
+
+`setup` downloads the ANTLR jar into `external/` and installs Python packages into `venv/`. Tests always run through the project virtual environment (`venv/Scripts/python.exe -m pytest` on Windows), so you do not need to activate the venv manually.
+
+On Windows, if `python3` is not available, use `py run.py setup` instead. If `pytest --version` works but `python3 run.py test-lexer` fails, the global `pytest` command is tied to a different Python — always use `python3 run.py test-*` (or `py run.py test-*`).
 
 ### Run tests
 
