@@ -53,13 +53,60 @@ program
 // - Keyword/type rules must precede IDENT
 // - NEWLINE is a real token — do NOT skip newlines in WS
 
-BREAK : 'break';
-CLASS : 'class';
-CONTINUE " 'continue';
-DATA : 'data';
-ELSE : 'else';
-FALSE : 'false';
-FOR : 'for';
+//Keywords
+BREAK : 'break' ;
+CLASS : 'class' ;
+CONTINUE: 'continue' ;
+DATA : 'data' ;
+ELSE : 'else' ;
+FALSE : 'false' ;
+FOR : 'for' ;
+FUN : 'fun' ;
+IF : 'if' ;
+IN : 'in' ;
+IS : 'is' ;
+RETURN : 'return' ;
+TRUE : 'true' ;
+VAL : 'val' ;
+WHEN : 'when' ;
+WHILE : 'while' ;
+
+// Built-in types
+INT : 'Int' ;
+FLOAT : 'Float' ;
+BOOLEAN : 'Boolean' ;
+UNIT : 'Unit' ;
+
+// operator
+ADD : '+' ;
+SUB : '-' ;
+MUL : '*' ;
+DIV : '/' ;
+MOD : '%' ;
+EQ : '==' ;
+NEQ : '!=' ;
+LT : '<' ;
+GT : '>' ;
+LTE : '<=' ;
+GTE : '>=' ;
+
+AND : '&&' ;
+OR : '||' ;
+NOT : '!' ;
+INC : '++' ;
+DEC : '--' ;
+ASGN : '=' ;
+MEMACC : '.' ;
+RANGE : '..' ;
+
+// Literals
+INT : [0-9]+ ('_' [0-9]+)* { 
+    self.text = self.text.replace('_','')
+};
+FLOAT : DEC EXP? [fF]? | [0-9]+ (EXP [fF]? | [fF]);
+fragment DEC : [0-9]+ '.' [0-9]* | [0-9]* '.' [0-9]+ ;
+fragment EXP : [eE] [+-]? [0-9]+ ;
+
 
 WS : [ \t\f]+ -> skip ;
 
