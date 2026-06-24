@@ -53,6 +53,14 @@ program
 // - Keyword/type rules must precede IDENT
 // - NEWLINE is a real token — do NOT skip newlines in WS
 
+BREAK : 'break';
+CLASS : 'class';
+CONTINUE " 'continue';
+DATA : 'data';
+ELSE : 'else';
+FALSE : 'false';
+FOR : 'for';
+
 WS : [ \t\f]+ -> skip ;
 
 ERROR_CHAR     : . ;
