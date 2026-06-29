@@ -68,6 +68,7 @@ IS : 'is' ;
 RETURN : 'return' ;
 TRUE : 'true' ;
 VAL : 'val' ;
+VAR : 'var' ;
 WHEN : 'when' ;
 WHILE : 'while' ;
 
@@ -75,7 +76,11 @@ WHILE : 'while' ;
 INT : 'Int' ;
 FLOAT : 'Float' ;
 BOOLEAN : 'Boolean' ;
+STRING : 'String' ;
 UNIT : 'Unit' ;
+
+// Identifier
+IDENT : [a-zA-Z_] [a-zA-Z_0-9]* ;
 
 // operator
 ADD : '+' ;
@@ -93,23 +98,44 @@ GTE : '>=' ;
 AND : '&&' ;
 OR : '||' ;
 NOT : '!' ;
-INC : '++' ;
-DEC : '--' ;
+INCREMENT : '++' ;
+DECREMENT : '--' ;
 ASGN : '=' ;
 MEMACC : '.' ;
 RANGE : '..' ;
 
+//Separator
+LB : '{' ;
+RB : '}' ;
+LP : '(' ;
+RP : ')' ;
+SEMI : ';' ;
+COMMA : ',' ;
+COLON : ':' ;
+ARROW : '->' ;
+
 // Literals
-INT : [0-9]+ ('_' [0-9]+)* { 
-    self.text = self.text.replace('_','')
-};
-FLOAT : DEC EXP? [fF]? | [0-9]+ (EXP [fF]? | [fF]);
-fragment DEC : [0-9]+ '.' [0-9]* | [0-9]* '.' [0-9]+ ;
+FLOATLIT : DEC EXP? [fF]? | [0-9]+ (EXP [fF]? | [fF]);
+fragment DEC : [0-9]+ '.' [0-9]* | '.' [0-9]+ ;
 fragment EXP : [eE] [+-]? [0-9]+ ;
+INTLIT : [0-9]+ ('_' [0-9]+)* ;
+ILLEGAL_ESCAPE : ["] (NORMAL_CHAR | ESCAPE_CHAR)* '\\' ~[bfrnt"\\$] {
+    self.text = self.text[1:]
+};
+UNCLOSE_STRING : ["] (NORMAL_CHAR | ESCAPE_CHAR)* {
+    self.text = self.text[1:]
+};
+STRINGLIT : ["] (NORMAL_CHAR | ESCAPE_CHAR)* ["] {
+    self.text = self.text[1:-1]
+}; 
+fragment NORMAL_CHAR : ~["\\\r\n$] ;
+fragment ESCAPE_CHAR : '\\' [bfrnt"\\$] ;
 
+// comments
+BLK_CMT : '/*' .*? '*/' -> skip ;
+LINE_CMT : '//' ~[\r\n]* -> skip ;
 
+NEWLINE : '\r'?'\n' ;
 WS : [ \t\f]+ -> skip ;
 
 ERROR_CHAR     : . ;
-ILLEGAL_ESCAPE : . ;
-UNCLOSE_STRING : . ;
