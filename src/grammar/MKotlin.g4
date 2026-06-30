@@ -43,11 +43,20 @@ program : newlineList declList EOF ;
 newlineList : NEWLINE newlineList | ;
 declList : decl newlineList declList | ;
 decl : dataClassDecl | funcDecl;
-dataClassDecl : DATA CLASS IDENT LP memList RP | DATA CLASS 'Empty' LP RP;
-memList : mem COMMA memList | mem ;
+
+dataClassDecl : DATA CLASS IDENT LP newlineList memList newlineList RP | DATA CLASS 'Empty' LP newlineList RP;
+memList : mem COMMA memList newlineList | mem ;
 mem : IDENT COLON typ ;
 typ : INT | FLOAT | BOOLEAN | STRING | IDENT ;
 
+funcDecl : FUN IDENT LP newlineList paramList newlineList RP rettype body ;    
+paramList : paramPrime | ;
+paramPrime : param COMMA newlineList paramPrime | param ;
+param : IDENT COLON typ ;
+body : LB newlineList stmtList newlineList RB ; 
+stmtList : stmt stmtList | ;
+rettype : COLON returnableTyp | ;
+returnableTyp : typ | UNIT ;
 
 // TODO: Define lexer rules here
 // Keywords, operators, literals, comments, NEWLINE (statement separator), ...
