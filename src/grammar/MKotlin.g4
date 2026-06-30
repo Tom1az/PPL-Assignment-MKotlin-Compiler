@@ -39,9 +39,15 @@ options {
 //   </<=/>/>=, +/-, */%, unary, postfix (. / call / ++/--), primary
 // - when/if as both statement and expression forms
 
-program
-    : EOF
-    ;
+program : newlineList declList EOF ;
+newlineList : NEWLINE newlineList | ;
+declList : decl newlineList declList | ;
+decl : dataClassDecl | funcDecl;
+dataClassDecl : DATA CLASS IDENT LP memList RP | DATA CLASS 'Empty' LP RP;
+memList : mem COMMA memList | mem ;
+mem : IDENT COLON typ ;
+typ : INT | FLOAT | BOOLEAN | STRING | IDENT ;
+
 
 // TODO: Define lexer rules here
 // Keywords, operators, literals, comments, NEWLINE (statement separator), ...
