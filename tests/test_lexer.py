@@ -433,3 +433,19 @@ def test_100():
     """A deep member-access assignment"""
     assert Tokenizer.tokens("person.address.city.zip = 70000") == \
         "person,.,address,.,city,.,zip,=,70000,EOF"
+
+def test_unclosed_block_comment_to_eof():
+    """Forum Q10: unclosed block comment tokenizes as / * then content, not ERROR_TOKEN"""
+    assert Tokenizer.tokens("/* abc") == "/,*,abc,EOF"
+
+def test_control_char_in_string_is_content():
+    """Spec: unprintable ASCII (e.g. tab) may appear directly in a string literal"""
+    assert Tokenizer.tokens('"a\tb"') == "a\tb,EOF"
+
+def test_int_literal_multiple_underscore_groups():
+    """Integer literal with multiple underscore groups: 1_000_000"""
+    assert Tokenizer.tokens("1_000_000") == "1_000_000,EOF"
+
+def test_float_literal_with_decimal_and_exponent():
+    """Float literal with decimal point and exponent: 1.23e4"""
+    assert Tokenizer.tokens("1.23e4") == "1.23e4,EOF"

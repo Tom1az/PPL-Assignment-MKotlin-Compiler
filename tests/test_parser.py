@@ -492,3 +492,278 @@ def test_099():
 def test_100():
     """Extra closing brace after a complete function"""
     assert Parser.parse("fun main() {\n}\n}") != "success"
+
+def test_101():
+    """1 line fun declaration"""
+    assert Parser.parse("fun main() { continue }") == "success"
+
+def test_102():
+    """when on 1 line"""
+    assert Parser.parse("fun main() { when(day){1->printInt(1)2,3->printInt(2)else->printInt(0)} }") == "success"
+
+def test_103():
+    """Two top-level declarations on one line separated by semicolon (Forum A9)"""
+    assert Parser.parse("data class Point(x: Int, y: Int); fun main() {}") == "success"
+
+
+# ========== Forum Q&A — parser scope ==========
+def test_forum_q1_get_point_member_access():
+    """Forum Q1/A1: (getPoint()).x — call then member access"""
+    src = (
+        "data class Point(x: Int, y: Int)\n"
+        "fun getPoint(): Point {\n  return Point(1, 2)\n}\n"
+        "fun main() {\n  printInt(getPoint().x)\n}"
+    )
+    assert Parser.parse(src) == "success"
+
+
+def test_forum_q1_obj_get_value_call():
+    """Forum Q1/A1: (obj.getValue)() — member access then call"""
+    assert Parser.parse("fun main() {\n  obj.getValue()\n}") == "success"
+
+
+def test_forum_q2_single_line_block_no_trailing_sep():
+    """Forum Q2/A2: single statement in block ends at closing brace"""
+    assert Parser.parse("fun main() { continue }") == "success"
+
+
+def test_forum_q2_semicolon_two_stmts_same_line():
+    """Forum Q2/A2: semicolon separates statements on the same line"""
+    assert Parser.parse("fun main() { val x = 10; val y = 20 }") == "success"
+
+
+def test_forum_q3_if_stmt_with_else():
+    """Forum Q3/A3: if/else as statement inside a block"""
+    src = "fun main() { if (x > 0) printInt(1) else printInt(0) }"
+    assert Parser.parse(src) == "success"
+
+
+def test_forum_q3_if_stmt_without_else():
+    """Forum Q3/A3: if without else as statement (literal expression statement)"""
+    assert Parser.parse("fun main() { if (x > 0) 1 }") == "success"
+
+
+def test_forum_q3_if_expr_in_assignment():
+    """Forum Q3/A3: if expression on rhs of assignment"""
+    assert Parser.parse("fun main() {\n  val m = if (a > b) a else b\n}") == "success"
+
+
+def test_forum_q3_if_expr_in_arithmetic():
+    """Forum Q3/A3: if expression nested inside another expression"""
+    assert Parser.parse("fun main() {\n  val y = 10 + if (a > b) 1 else 0\n}") == "success"
+
+
+def test_forum_q3_if_expr_as_return():
+    """Forum Q3/A3: if expression as return value"""
+    assert Parser.parse("fun f(): Int {\n  return if (c) 1 else 2\n}") == "success"
+
+
+def test_forum_q3_if_expr_as_call_argument():
+    """Forum Q3/A3: if expression passed as a function argument"""
+    assert Parser.parse("fun main() {\n  printInt(if (flag) 1 else 0)\n}") == "success"
+
+
+def test_forum_q3_if_expr_with_block_branches_invalid():
+    """Forum Q3/A3: if expression branches must be expr, not block stmt"""
+    src = "fun main() {\n  val x = if (a) { 1 } else { 2 }\n}"
+    assert Parser.parse(src) != "success"
+
+
+def test_forum_q4_if_newline_before_block():
+    """Forum Q4/A4: newline between if condition and block body is valid"""
+    src = "fun main() {\n  if (a > 0)\n  {\n    printInt(1)\n  }\n}"
+    assert Parser.parse(src) == "success"
+
+
+def test_forum_q4_while_newline_before_block():
+    """Forum Q4/A4: newline between while condition and block body is valid"""
+    src = "fun main() {\n  while (a)\n  {\n    printInt(1)\n  }\n}"
+    assert Parser.parse(src) == "success"
+
+
+def test_forum_q4_for_newline_before_block():
+    """Forum Q4/A4: newline between for header and block body is valid"""
+    src = "fun main() {\n  for (i in 0 .. 9)\n  {\n    printInt(i)\n  }\n}"
+    assert Parser.parse(src) == "success"
+
+
+def test_forum_q4_fun_newline_before_body_invalid():
+    """Forum Q4/A4: newline between fun header and body is a syntax error"""
+    src = "fun main()\n{\n  printInt(1)\n}"
+    assert Parser.parse(src) != "success"
+
+
+def test_forum_q4_fun_newline_before_body_with_return_type_invalid():
+    """Forum Q4/A4: newline before body is invalid even with explicit return type"""
+    src = "fun main(): Unit\n{\n  printInt(1)\n}"
+    assert Parser.parse(src) != "success"
+
+
+def test_forum_q5_when_empty_branch_list():
+    """Forum Q5/A5: when statement with zero branches is valid"""
+    assert Parser.parse("fun main() {\n  when (a) {}\n}") == "success"
+
+
+def test_forum_q8_when_branches_one_line_no_sep():
+    """Forum Q8/A8: separator between when branches is optional"""
+    src = "fun main() { when(day){1->printInt(1)2,3->printInt(2)else->printInt(0)} }"
+    assert Parser.parse(src) == "success"
+
+
+def test_forum_q8_when_branches_multiline_with_newlines():
+    """Forum Q8/A8: when branches may be separated by newlines"""
+    src = (
+        "fun main() {\n  when (day) {\n"
+        "    1 -> printInt(1)\n"
+        "    2, 3 -> printInt(2)\n"
+        "    else -> printInt(0)\n"
+        "  }\n}"
+    )
+    assert Parser.parse(src) == "success"
+
+
+def test_forum_q8_block_statements_require_sep():
+    """Forum Q8/A8: ordinary block statements must be separated by newline or ;"""
+    src = "fun main() {\n  val x = 1 val y = 2\n}"
+    assert Parser.parse(src) != "success"
+
+
+def test_forum_q9_decls_separated_by_newline():
+    """Forum Q9/A9: top-level declarations require separator (newline)"""
+    src = "data class Point(x: Int, y: Int)\nfun main() {}"
+    assert Parser.parse(src) == "success"
+
+
+def test_forum_q9_decls_separated_by_semicolon():
+    """Forum Q9/A9: top-level declarations may use semicolon as separator"""
+    src = "data class Point(x: Int, y: Int); fun main() {}"
+    assert Parser.parse(src) == "success"
+
+
+def test_forum_q9_decls_glued_invalid():
+    """Forum Q9/A9: missing separator between top-level declarations is invalid"""
+    src = "data class Point(x: Int, y: Int)fun main() {}"
+    assert Parser.parse(src) != "success"
+
+# ========== Separators: mixed / repeated / trailing (newline & ;) ==========
+def test_blank_lines_between_decls():
+    """Multiple blank lines between two top-level declarations are allowed"""
+    assert Parser.parse("data class P(x: Int)\n\n\nfun main() {}") == "success"
+
+def test_blank_line_between_functions():
+    """A blank line between two functions is allowed"""
+    assert Parser.parse("fun a() {}\n\nfun b() {}") == "success"
+
+def test_semicolon_then_newline_in_block():
+    """A ';' immediately followed by a newline separates statements"""
+    assert Parser.parse("fun main() { val x = 10;\nval y = 20}") == "success"
+
+def test_semicolon_then_newline_top_level():
+    """A ';' then newline separates two top-level declarations"""
+    assert Parser.parse("data class P(x: Int);\nfun main() {}") == "success"
+
+def test_trailing_semicolon_before_brace():
+    """A trailing ';' just before the closing brace is allowed"""
+    assert Parser.parse("fun main() { val x = 1; }") == "success"
+
+def test_semicolon_with_trailing_space_in_block():
+    """';' followed by spaces then a newline still separates statements"""
+    assert Parser.parse("fun main() {\n val x = 1; \n val y = 2\n}") == "success"
+
+
+# ========== Coverage: syntactic rules enforced by the grammar ==========
+def test_val_requires_initializer():
+    """Spec: a `val` must have an initializer (no `val x` / `val x: T` form)"""
+    assert Parser.parse("fun main() {\n  val x\n}") != "success"
+    assert Parser.parse("fun main() {\n  val x: Int\n}") != "success"
+
+def test_unit_not_a_variable_type():
+    """Spec: `Unit` is not allowed as a variable type"""
+    assert Parser.parse("fun main() {\n  var x: Unit\n}") != "success"
+
+def test_unit_not_a_parameter_type():
+    """Spec: `Unit` is not allowed as a parameter type"""
+    assert Parser.parse("fun f(x: Unit) {\n}") != "success"
+
+def test_unit_valid_as_return_type():
+    """`Unit` is allowed as a return type (contrast with variable/parameter)"""
+    assert Parser.parse("fun f(): Unit {\n}") == "success"
+
+def test_keyword_not_identifier():
+    """A reserved keyword cannot be used as an identifier"""
+    assert Parser.parse("fun main() {\n  val if = 1\n}") != "success"
+
+def test_reserved_type_not_identifier():
+    """A reserved type name cannot be used as an identifier"""
+    assert Parser.parse("fun main() {\n  val Int = 1\n}") != "success"
+
+def test_keyword_not_function_name():
+    """A reserved keyword cannot be used as a function name"""
+    assert Parser.parse("fun for() {\n}") != "success"
+
+def test_for_loop_var_must_be_ident():
+    """The `for` loop variable must be a plain identifier, not an expression"""
+    assert Parser.parse("fun main() {\n  for (a.b in 0 .. 9) {\n  }\n}") != "success"
+
+
+# ========== Coverage: multiline declarations ==========
+def test_multiline_data_class():
+    """Data class members may be spread across multiple lines"""
+    assert Parser.parse("data class P(\n  x: Int,\n  y: Int\n)") == "success"
+
+def test_multiline_param_list():
+    """Function parameters may be spread across multiple lines"""
+    assert Parser.parse("fun f(\n  x: Int,\n  y: Int\n) {\n}") == "success"
+
+def test_multiline_empty_data_class():
+    """A newline inside empty data class parentheses is allowed"""
+    assert Parser.parse("data class Empty(\n)") == "success"
+
+
+# ========== Coverage: when as expression (subject form) ==========
+def test_when_subject_form_as_expression():
+    """when in subject form used as an expression initializer"""
+    src = 'fun main() {\n  val g = when (s) {\n    1 -> "a"\n    else -> "b"\n  }\n}'
+    assert Parser.parse(src) == "success"
+
+def test_when_expression_as_call_argument():
+    """when expression passed directly as a function argument"""
+    src = "fun main() {\n  printInt(when {\n    a -> 1\n    else -> 0\n  })\n}"
+    assert Parser.parse(src) == "success"
+
+def test_when_expression_literal_branches_valid():
+    """when expression: literal branches after -> are valid expr"""
+    src = "fun main() {\n  val sign = when {\n    n > 0 -> 1\n    n < 0 -> -1\n    else -> 0\n  }\n}"
+    assert Parser.parse(src) == "success"
+
+def test_when_expression_block_on_first_branch_invalid():
+    """when expression: block { ... } on the first branch is invalid"""
+    src = "fun main() {\n  val x = when {\n    1 -> { 2 }\n    else -> 0\n  }\n}"
+    assert Parser.parse(src) != "success"
+
+def test_when_expression_block_branch_invalid():
+    """when expression: block { ... } on a later branch is also invalid"""
+    src = "fun main() {\n  val x = when {\n    1 -> 1\n    2 -> { 3 }\n    else -> 0\n  }\n}"
+    assert Parser.parse(src) != "success"
+
+def test_if_expression_block_branch_invalid():
+    """if expression: block branches are invalid (must be expr, not stmt)"""
+    src = "fun main() {\n  val x = if (a) { 1 } else { 2 }\n}"
+    assert Parser.parse(src) != "success"
+
+def test_lone_semicolon_not_valid_statement():
+    """Spec: a semicolon by itself is not a valid statement"""
+    assert Parser.parse("fun main() {\n  ;\n}") != "success"
+
+def test_double_semicolon_between_statements():
+    """Two consecutive semicolons between statements are allowed"""
+    assert Parser.parse("fun main() {\n  val x = 1;; val y = 2\n}") == "success"
+
+def test_newline_semicolon_newline_between_statements():
+    """A semicolon on its own line between statements is allowed"""
+    src = "fun main() {\n  val x = 1\n  ;\n  val y = 2\n}"
+    assert Parser.parse(src) == "success"
+
+def test_trailing_semicolon_after_top_level_decl():
+    """A trailing semicolon after the last top-level declaration is allowed"""
+    assert Parser.parse("fun main() {}\n;") == "success"

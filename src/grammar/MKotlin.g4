@@ -39,7 +39,7 @@ options {
 //   </<=/>/>=, +/-, */%, unary, postfix (. / call / ++/--), primary
 // - when/if as both statement and expression forms
 
-program : newlineList declList EOF ;
+program : newlineList declList newlineList EOF ;
 // expression
 expr : asn ;
 asn : lor ASGN asn 
@@ -74,12 +74,10 @@ muldivmod : muldivmod MUL unary
           | unary 
           ; 
 unary : NOT unary 
-      | SUB unary 
-      | ADD unary 
-      | prefix 
-      ;
-prefix : INCREMENT prefix 
-       | DECREMENT prefix
+       | SUB unary 
+       | ADD unary
+       | INCREMENT unary 
+       | DECREMENT unary
        | postfix
        ;
 postfix : postfix LP exprList RP
@@ -100,16 +98,35 @@ primary : INTLIT
         | IDENT
         | LP expr RP
         ;
-ifexpr : IF LP expr RP stmt ELSE stmt ;
-whenexpr : WHEN LP expr RP LB newlineList whenBranchList newlineList RB 
-         | WHEN LB newlineList whenBranchList newlineList RB
+ifexpr : IF LP expr RP expr ELSE expr ;
+whenexpr : WHEN LP expr RP LB newlineList whenExprBranchList newlineList RB 
+         | WHEN LB newlineList whenExprBranchList newlineList RB
          ;
+whenExprBranchList : whenExprBranch optSep whenExprBranchList 
+               | 
+               ;
+whenExprBranch : whenBranchLabel ARROW expr
+           | ELSE ARROW expr
+           ;
 newlineList : NEWLINE newlineList 
             | 
             ;
-declList : decl newlineList declList 
+declList : declPrime 
          | 
          ;
+declPrime : decl sepList declPrime 
+          | decl sepList
+          | decl
+          ;
+sepList : sep sepList
+        | sep 
+        ;
+sep : NEWLINE 
+    | SEMI 
+    ;
+optSep : sep 
+       | 
+       ;
 decl : dataClassDecl 
      | funcDecl
      ;
@@ -145,8 +162,11 @@ rettype : COLON returnableTyp
 returnableTyp : typ 
               | UNIT 
               ;
-sep : newlineList | SEMI ;
-stmtList : stmt sep stmtList | stmt sep | ;
+stmtList : stmtPrime | ;
+stmtPrime : stmt sepList stmtPrime 
+          | stmt sepList
+          | stmt 
+          ;
 stmt : valdecl 
      | blkstmt 
      | ifstmt 
@@ -165,16 +185,16 @@ valdecl : VAL IDENT ASGN expr
         | VAR IDENT COLON typ 
         | VAR IDENT
         ;
-blkstmt : LB newlineList stmtList newlineList RB | LB RB;
-ifstmt : IF LP expr RP stmt 
-       | IF LP expr RP stmt ELSE stmt
+blkstmt : body ;
+ifstmt : IF LP expr RP newlineList stmt 
+       | IF LP expr RP newlineList stmt ELSE newlineList stmt
        ;
-whilestmt :  WHILE LP expr RP stmt ;
-forstmt : FOR LP IDENT IN addsub RANGE addsub RP stmt ;
+whilestmt :  WHILE LP expr RP newlineList stmt ;
+forstmt : FOR LP IDENT IN expr RANGE expr RP newlineList stmt ;
 whenstmt : WHEN LP expr RP LB newlineList whenBranchList newlineList RB 
          | WHEN LB newlineList whenBranchList newlineList RB
          ;
-whenBranchList : whenBranch sep whenBranchList 
+whenBranchList : whenBranch optSep whenBranchList 
                | 
                ;
 whenBranch : whenBranchLabel ARROW stmt
