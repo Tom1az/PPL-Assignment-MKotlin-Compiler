@@ -449,3 +449,10 @@ def test_int_literal_multiple_underscore_groups():
 def test_float_literal_with_decimal_and_exponent():
     """Float literal with decimal point and exponent: 1.23e4"""
     assert Tokenizer.tokens("1.23e4") == "1.23e4,EOF"
+
+def test_065():
+        """Chuỗi kết thúc bằng dấu backslash (\\) ngay sát EOF là UNCLOSE_STRING, không phải ILLEGAL_ESCAPE"""
+        # Python string '"text\\' tương đương chuỗi: " t e x t \ (hết file)
+        input_code = '"text\\' 
+        expected = "text\\"
+        assert Tokenizer.tokens(input_code) == expected

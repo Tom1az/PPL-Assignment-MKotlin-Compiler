@@ -553,3 +553,34 @@ val s = "abc\ndef"
 (Chuỗi này viết trên một dòng, ký tự `\n` là hai ký tự `\` và `n` trong source code, khi chạy mới đổi thành ký tự xuống dòng thực tế). MKotlin không hỗ trợ chuỗi nhiều dòng (multi-line string / triple-quoted string `"""..."""`) như Kotlin thực tế, nên kiểu viết xuống dòng trực tiếp trong mã nguồn như ví dụ của em chắc chắn là lỗi cú pháp.
 
 Chúc em làm bài tốt.
+
+---
+
+## Q12
+ 
+> "Only these escape sequences are valid. Hex and unicode escapes such as `\x01` or `\u0041` are not supported and will cause an `ILLEGAL_ESCAPE` error."
+ 
+=> Vừa gặp chữ x là mình đã bắt lỗi được rồi đúng không ạ
+ 
+`" \` (rồi EOF) => này là lỗi `ILLEGAL_ESCAPE` (vì backslash thiếu escape) hay là `UNCLOSE_STRING` vậy ạ.
+ 
+Em cảm ơn thầy ạ.
+ 
+## A12
+ 
+Chào em,
+ 
+### Câu 1: `\x01`, `\u0041` — gặp x là bắt lỗi?
+ 
+Em vui lòng đọc lại mục String literal → Error Detection Order, ý 1:
+ 
+> "any backslash followed by a character that is not one of the supported escape characters (b, f, r, n, t, ", ', $)"
+ 
+Từ đó em tự suy luận: với `\x01`, khi nào lexer báo `ILLEGAL_ESCAPE`, và lexeme lỗi dừng ở đâu (không cần đọc thêm `01`).
+ 
+### Câu 2: `"text\` rồi EOF — lỗi gì?
+ 
+Đây là `UNCLOSE_STRING`, không phải `ILLEGAL_ESCAPE`.
+ 
+- Lý do: `ILLEGAL_ESCAPE` (ý 1) yêu cầu backslash đi kèm một ký tự không thuộc danh sách escape hợp lệ. Ở EOF không có ký tự sau `\`, nên không rơi vào `ILLEGAL_ESCAPE`.
+- Theo thứ tự kiểm tra lỗi, trường hợp này rơi vào ý 2 — chuỗi chưa đóng trước khi gặp end of file → `UNCLOSE_STRING`. Lexeme là nội dung sau dấu `"` mở (ví dụ `text\`), không gồm dấu `"` mở

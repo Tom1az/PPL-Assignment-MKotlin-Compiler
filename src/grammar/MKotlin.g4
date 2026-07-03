@@ -289,7 +289,7 @@ INTLIT : [0-9]+ ('_' [0-9]+)* ;
 ILLEGAL_ESCAPE : ["] (NORMAL_CHAR | ESCAPE_CHAR)* ('\\' ~[bfrnt"\\] | '$' [a-zA-Z{]) {
     self.text = self.text[1:]
 };
-UNCLOSE_STRING : ["] (NORMAL_CHAR | ESCAPE_CHAR)* {
+UNCLOSE_STRING : ["] (NORMAL_CHAR | ESCAPE_CHAR)* '\\'? {
     self.text = self.text[1:]
 };
 STRINGLIT : ["] (NORMAL_CHAR | ESCAPE_CHAR)* ["] {

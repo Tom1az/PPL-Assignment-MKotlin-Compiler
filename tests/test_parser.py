@@ -767,3 +767,4 @@ def test_newline_semicolon_newline_between_statements():
 def test_trailing_semicolon_after_top_level_decl():
     """A trailing semicolon after the last top-level declaration is allowed"""
     assert Parser.parse("fun main() {}\n;") == "success"
+
