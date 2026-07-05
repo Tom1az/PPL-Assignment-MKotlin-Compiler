@@ -1,6 +1,6 @@
 """
 Lexer test cases for MKotlin compiler.
-100 curated test cases, ordered by increasing difficulty.
+105 curated test cases, ordered by increasing difficulty.
 """
 
 from tests.utils import Tokenizer
@@ -279,11 +279,11 @@ def test_064():
 
 def test_065():
     """Unescaped '$' before a letter is illegal (template reserved)"""
-    assert Tokenizer.tokens('"hello $name"') == "hello $n"
+    assert Tokenizer.tokens('"hello $name"') == "hello $"
 
 def test_066():
     """Unescaped '$' before '{' is illegal"""
-    assert Tokenizer.tokens('"value: ${x}"') == "value: ${"
+    assert Tokenizer.tokens('"value: ${x}"') == "value: $"
 
 def test_067():
     """Unclosed string at end of file"""
@@ -434,25 +434,25 @@ def test_100():
     assert Tokenizer.tokens("person.address.city.zip = 70000") == \
         "person,.,address,.,city,.,zip,=,70000,EOF"
 
-def test_unclosed_block_comment_to_eof():
+def test_101():
     """Forum Q10: unclosed block comment tokenizes as / * then content, not ERROR_TOKEN"""
     assert Tokenizer.tokens("/* abc") == "/,*,abc,EOF"
 
-def test_control_char_in_string_is_content():
+def test_102():
     """Spec: unprintable ASCII (e.g. tab) may appear directly in a string literal"""
     assert Tokenizer.tokens('"a\tb"') == "a\tb,EOF"
 
-def test_int_literal_multiple_underscore_groups():
+def test_103():
     """Integer literal with multiple underscore groups: 1_000_000"""
     assert Tokenizer.tokens("1_000_000") == "1_000_000,EOF"
 
-def test_float_literal_with_decimal_and_exponent():
+def test_104():
     """Float literal with decimal point and exponent: 1.23e4"""
     assert Tokenizer.tokens("1.23e4") == "1.23e4,EOF"
 
-def test_065():
-        """Chuỗi kết thúc bằng dấu backslash (\\) ngay sát EOF là UNCLOSE_STRING, không phải ILLEGAL_ESCAPE"""
-        # Python string '"text\\' tương đương chuỗi: " t e x t \ (hết file)
-        input_code = '"text\\' 
-        expected = "text\\"
-        assert Tokenizer.tokens(input_code) == expected
+def test_105():
+    """Chuỗi kết thúc bằng dấu backslash (\\) ngay sát EOF là UNCLOSE_STRING, không phải ILLEGAL_ESCAPE"""
+    # Python string '"text\\' tương đương chuỗi: " t e x t \ (hết file)
+    input_code = '"text\\'
+    expected = "text\\"
+    assert Tokenizer.tokens(input_code) == expected

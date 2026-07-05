@@ -99,15 +99,21 @@ primary : INTLIT
         | LP expr RP
         ;
 ifexpr : IF LP expr RP expr ELSE expr ;
-whenexpr : WHEN LP expr RP LB newlineList whenExprBranchList newlineList RB 
-         | WHEN LB newlineList whenExprBranchList newlineList RB
+whenexpr : WHEN LP expr RP LB newlineList whenExprSubjBranchList newlineList RB 
+         | WHEN LB newlineList whenExprConditionlessBranchList newlineList RB
          ;
-whenExprBranchList : whenExprBranch optSep whenExprBranchList 
+whenExprSubjBranchList : whenExprSubjBranch optSep whenExprSubjBranchList 
                | 
                ;
-whenExprBranch : whenBranchLabel ARROW expr
+whenExprConditionlessBranchList : whenExprConditionlessBranch optSep whenExprConditionlessBranchList 
+               | 
+               ;
+whenExprSubjBranch : exprPrime ARROW expr
            | ELSE ARROW expr
            ;
+whenExprConditionlessBranch : expr ARROW expr 
+                            | ELSE ARROW expr
+                            ;
 newlineList : NEWLINE newlineList 
             | 
             ;
@@ -132,8 +138,8 @@ decl : dataClassDecl
      ;
 
 // Data Class Declare
-dataClassDecl : DATA CLASS IDENT LP newlineList memList newlineList RP 
-              | DATA CLASS IDENT LP newlineList RP
+dataClassDecl : DATA CLASS IDENT LP memList RP 
+              | DATA CLASS IDENT LP RP
               ;
 memList : mem COMMA newlineList memList 
         | mem 
@@ -147,7 +153,7 @@ typ : INT
     ;
 
 // Function Declare
-funcDecl : FUN IDENT LP newlineList paramList newlineList RP rettype body ;    
+funcDecl : FUN IDENT LP paramList RP rettype body ;    
 paramList : paramPrime 
           | 
           ;
@@ -191,16 +197,21 @@ ifstmt : IF LP expr RP newlineList stmt
        ;
 whilestmt :  WHILE LP expr RP newlineList stmt ;
 forstmt : FOR LP IDENT IN expr RANGE expr RP newlineList stmt ;
-whenstmt : WHEN LP expr RP LB newlineList whenBranchList newlineList RB 
-         | WHEN LB newlineList whenBranchList newlineList RB
+whenstmt : WHEN LP expr RP LB newlineList whenStmtSubjBranchList newlineList RB 
+         | WHEN LB newlineList whenStmtConditionlessBranchList newlineList RB
          ;
-whenBranchList : whenBranch optSep whenBranchList 
+whenStmtSubjBranchList : whenStmtSubjBranch optSep whenStmtSubjBranchList 
                | 
                ;
-whenBranch : whenBranchLabel ARROW stmt
+whenStmtConditionlessBranchList : whenStmtConditionlessBranch optSep whenStmtConditionlessBranchList 
+               | 
+               ;
+whenStmtSubjBranch : exprPrime ARROW stmt
            | ELSE ARROW stmt
            ;
-whenBranchLabel : exprPrime ;
+whenStmtConditionlessBranch : expr ARROW stmt 
+                            | ELSE ARROW stmt
+                            ;
 brkstmt : BREAK ;
 contstmt : CONTINUE ; 
 retstmt : RETURN expr 
@@ -286,7 +297,7 @@ FLOATLIT : [0-9]+ '.' {self._input.LA(1) != ord('.')}? [0-9]* EXP? [fF]?
          ;
 fragment EXP : [eE] [+-]? [0-9]+ ;
 INTLIT : [0-9]+ ('_' [0-9]+)* ;
-ILLEGAL_ESCAPE : ["] (NORMAL_CHAR | ESCAPE_CHAR)* ('\\' ~[bfrnt"\\] | '$' [a-zA-Z{]) {
+ILLEGAL_ESCAPE : ["] (NORMAL_CHAR | ESCAPE_CHAR)* ('\\' ~[bfrnt"\\] | '$') {
     self.text = self.text[1:]
 };
 UNCLOSE_STRING : ["] (NORMAL_CHAR | ESCAPE_CHAR)* '\\'? {
