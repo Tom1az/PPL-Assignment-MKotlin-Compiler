@@ -10,8 +10,14 @@ A compiler implementation for **MKotlin**, a simple Kotlin-like programming lang
 
 This is a mini project for the **Principles of Programming Languages** course that implements a compiler for **MKotlin**, a custom Kotlin-inspired language designed for educational purposes. The project follows a classic multi-phase pipeline (lexical analysis → parsing → AST generation → semantic analysis → code generation) and adopts Kotlin's surface syntax with a genuine `Boolean` type.
 
-📋 **For the full language specification, see [MKotlin Specification](mkotlin_specification.md).**  
+📋 **For the full language specification, see [MKotlin Specification](mkotlin_specification.md)** (current version: **1.1**).  
 📋 **For AST node conventions (Assignment 2), see [AST Representation](mkotlin-ast_representation.md).**
+
+### Specification changelog
+
+**Version 1.1 (July 2026)** — clarifications for BTL 1 only; the language rules themselves are unchanged. The spec now documents layout and lexer/parser edge cases that were previously implicit: newline vs `;` separators (`sep+` / `sep*`), `..` tokenization vs float literals, empty `when` branches, if/when expression vs statement forms, expression single-line rule, and string-comment lexical details. See [Revision History](mkotlin_specification.md#revision-history) in the specification for the full list.
+
+**Version 1.0 (June 2026)** — initial release.
 
 The project demonstrates fundamental concepts of compiler construction:
 
@@ -50,7 +56,7 @@ The project demonstrates fundamental concepts of compiler construction:
 ### Lexical Error Handling Requirements
 
 - **ERROR_TOKEN** with `<unrecognized char>` lexeme — unrecognized character.
-- **UNCLOSE_STRING** with `<unclosed string>` lexeme — unterminated string (lexeme excludes the opening quote).
+- **UNCLOSE_STRING** with `<unclosed string>` lexeme — unterminated string (lexeme excludes the opening quote and any terminating newline or carriage return).
 - **ILLEGAL_ESCAPE** with `<wrong string>` lexeme — illegal escape; the wrong string runs from the start of the string (without the opening quote) to the illegal escape. Recall the supported escapes are `b f r n t " \ $`.
 
 ### Evaluation Criteria
@@ -137,7 +143,8 @@ Traverse the AST with `ASTVisitor`; generate valid, assembling-and-running Jasmi
 ├── mkotlin_specification.md
 ├── mkotlin-ast_representation.md
 ├── mkotlin-semantic_constraints_and_errors.md
-├── external/              # ANTLR jar (downloaded by `run.py setup`)
+├── external/
+│   └── README.md          # place antlr-4.13.2-complete.jar here
 ├── src/
 │   ├── astgen/
 │   │   └── ast_generation.py      # ASTGeneration — student implementation
@@ -182,13 +189,13 @@ Traverse the AST with `ASTVisitor`; generate valid, assembling-and-running Jasmi
 
 ```bash
 python3 run.py check
-python3 run.py setup    # creates venv, downloads ANTLR, installs dependencies
+python3 run.py setup
+# macOS/Linux:
+source venv/bin/activate
+# Windows:
+venv\Scripts\activate
 python3 run.py build
 ```
-
-`setup` downloads the ANTLR jar into `external/` and installs Python packages into `venv/`. Tests always run through the project virtual environment (`venv/Scripts/python.exe -m pytest` on Windows), so you do not need to activate the venv manually.
-
-On Windows, if `python3` is not available, use `py run.py setup` instead. After activating the project venv, prefer `python run.py test-*` — on Windows `python3` often still points to a different interpreter even when the prompt shows `(venv)`.
 
 ### Run tests
 

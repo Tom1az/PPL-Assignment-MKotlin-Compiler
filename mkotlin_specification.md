@@ -1,6 +1,6 @@
 # MKotlin Programming Language Specification
 
-**Version 1.0 - June 2026**
+**Version 1.1 - July 2026**
 
 ## Table of Contents
 
@@ -29,7 +29,7 @@ Despite its simplicity, MKotlin includes most important features of a procedural
 
 ## Program Structure
 
-For simplicity, an MKotlin compiler does not support compiling multiple files, so an MKotlin program is written in a single file. An MKotlin program consists of a (possibly empty) sequence of **data class declarations** and **function declarations**, in any order subject to the declared-before-use rule in [Scope Rules](#scope-rules).
+For simplicity, an MKotlin compiler does not support compiling multiple files, so an MKotlin program is written in a single file. An MKotlin program consists of a (possibly empty) sequence of **data class declarations** and **function declarations**, in any order subject to the declared-before-use rule in [Scope Rules](#scope-rules). Consecutive top-level declarations must be separated by at least one **separator** (a newline or semicolon); see [Separators and Statement/Declaration Lists](#separators-and-statementdeclaration-lists).
 
 The entry point of an MKotlin program is a function named `main` that takes no parameters and returns `Unit`. Each such function in an MKotlin program is an entry point of the program.
 
@@ -102,6 +102,10 @@ When the return type annotation is omitted, it is inferred from the `return` sta
 
 The character set of MKotlin is extended ASCII (characters with code points 0–255). Blank (`' '`), tab (`'\t'`), form feed (the ASCII FF, `'\f'`), carriage return (the ASCII CR, `'\r'`) and newline (the ASCII LF, `'\n'`) are whitespace characters. The `'\n'` is used as the newline character in MKotlin.
 
+Although newline is listed among whitespace characters for line-numbering purposes, the parser treats `NEWLINE` as a **significant token** (similar to Python), not as skippable layout in every context. Blank, tab, and form feed are insignificant and are skipped by the lexer; newline is not skipped globally and may appear only where the grammar allows it (see [Newlines and Layout](#newlines-and-layout)).
+
+Carriage return (`\r`) is also listed as a whitespace character, but its lexical role differs by context: `\r` (or `\n`, or `\r\n` as a single line ending) terminates a line comment and triggers an unclosed-string error inside string literals; only `\n` (with an optional preceding `\r` in `\r\n`) forms the parser's `NEWLINE` token. A bare `\r` is not skipped like space or tab.
+
 This definition of lines can be used to determine the line numbers produced by an MKotlin compiler.
 
 ### Statement Termination
@@ -115,9 +119,73 @@ For example, both of the following are valid:
 
     val x = 10; val y = 20
 
+### Newlines and Layout
+
+In MKotlin, newline (`\n`) is a **significant token** for the parser: it separates statements and may appear only where the grammar allows it. Space, tab, and form feed are insignificant and are skipped by the lexer.
+
+A newline is **not** universal “insignificant whitespace” before `{`. Whether a newline may appear immediately before an opening brace depends on the construct:
+
+| **Construct** | **Newline before `{`?** | **Example** |
+| --- | --- | --- |
+| Function body | **No** — `{` must follow `)` or `: <return_type>` on the same logical header | `fun main() { }` ✓; `fun main()\n{ }` ✗ |
+| `if` / `while` / `for` body (block) | **Yes** — optional newlines may appear before the body `<statement>` | `if (a)\n{ ... }` ✓ |
+| `when { ... }` | **No** — `{` must follow `when` or `when (<expr>)` directly | `when (x) { }` ✓; `when (x)\n{ }` ✗ |
+| Block internals | **Yes** — `{` may be followed by newlines; statements inside are separated by newlines or `;` | `{\n  val x = 1\n}` ✓ |
+| Empty parentheses `()` | **No** — `)` must follow `(` directly (only insignificant space/tab may appear inside) | `main()` ✓; `main(\n )` ✗ |
+
+**Rule of thumb:** if the grammar expects a `<statement>` or `<block>` next, optional newlines are allowed; if it expects `{` as the immediate continuation of a declaration header (`fun ...`, `when ...`), or `)` immediately after `(` in an empty parameter/argument list, they are not.
+
+For example:
+
+    fun main() {
+        printInt(1)
+    }                          // valid
+
+    fun main()
+    {
+        printInt(1)
+    }                          // invalid: syntax error at newline before `{`
+
+    if (a > 0) {
+        printInt(1)
+    }                          // valid
+
+    if (a > 0)
+    {
+        printInt(1)
+    }                          // valid
+
+### Lexical Tokenization
+
+This section clarifies how the lexer groups characters when multiple lexical rules could apply.
+
+#### Range operator vs float literals
+
+Both the range operator `..` and float literals such as `1.` and `.5` are valid in MKotlin. The lexer must recognize `..` as a single `RANGE` token **before** attempting to read a float literal whose trailing dot would consume the first dot of a range.
+
+| **Input** | **Tokens** |
+| --- | --- |
+| `1..2` | `INTLIT(1)`, `RANGE(..)`, `INTLIT(2)` |
+| `1....2` | `INTLIT(1)`, `RANGE(..)`, `RANGE(..)`, `INTLIT(2)` |
+
+The tokenization `FLOATLIT(1.)`, `FLOATLIT(.2)` for `1..2` is **incorrect**.
+
+**Implementation note:** define the `RANGE` (`'..'`) lexer rule before float rules that accept a trailing dot (`DIGITS '.'`), or use a semantic predicate so that `1.` is not recognized when the next character is another `.`.
+
+#### Empty parentheses
+
+Inside empty parameter or argument lists, only insignificant whitespace (space, tab, form feed) may appear between `(` and `)`. A `NEWLINE` there is a syntax error:
+
+    fun main() { }              // valid
+    fun main( ) { }             // valid (insignificant space only)
+    fun main(
+    ) { }                      // invalid
+    getPoint(
+    )                          // invalid
+
 ### Comment
 
-There are two types of comment in MKotlin: block and line. A block comment starts with `"/*"` and ignores all characters (except EOF) until it reaches `"*/"`. A line comment ignores all characters from `"//"` to the end of the current line.
+There are two types of comment in MKotlin: block and line. A block comment starts with `"/*"` and ignores all characters (except EOF) until it reaches `"*/"`. A line comment ignores all characters from `"//"` to the end of the current line. **End of the current line** means the next `\n` or `\r` (including the `\r` in a Windows `\r\n` line ending).
 
 For example:
 
@@ -130,6 +198,7 @@ The following rules are enforced in MKotlin:
 - Comments are not nested.
 - `"/*"` and `"*/"` have no special meaning in any line comment.
 - `"//"` has no special meaning in any block comment.
+- An unclosed block comment at EOF (no closing `*/`) is **not** one of the three defined lexical errors. The `/* … */` lexer rule simply does not match; the lexer continues tokenizing the remaining source normally.
 
 ### Identifier
 
@@ -230,12 +299,13 @@ Only these escape sequences are valid. Hex and unicode escapes such as `\x01` or
 
 - When a valid string literal is recognized, the lexer strips the enclosing double quotes. The token value contains only the string content without the quotes.
 - For error cases (`ILLEGAL_ESCAPE` and `UNCLOSE_STRING`), the lexer removes the opening double quote, but the error message includes the problematic content.
+- For `UNCLOSE_STRING` errors, the lexeme is the string content after the opening quote **up to but not including** the terminating `\n`, `\r`, or EOF. The newline or carriage return that ends the literal is **not** part of the lexeme.
 - For `ILLEGAL_ESCAPE` errors, the error message includes the string content from the beginning (without the opening quote) up to and including the illegal escape sequence.
 
 **Error Detection Order:** The lexer checks for errors in the following order (first match wins):
 
-1. **Illegal escape sequences** are detected first: any backslash followed by a character that is not one of the supported escape characters (`b`, `f`, `r`, `n`, `t`, `"`, `\`, `$`).
-2. **Unclosed strings** are detected if the string literal is not closed before encountering a newline, carriage return, or end of file.
+1. **Illegal escape sequences** are detected first: any backslash followed by a character that is not one of the supported escape characters (`b`, `f`, `r`, `n`, `t`, `"`, `\`, `$`). For example, `\x` in `\x01` triggers `ILLEGAL_ESCAPE` as soon as the unsupported character (`x`) is seen; the lexer does not need to read further digits. A lone `\` at EOF is **not** an illegal escape (there is no following character) and falls through to rule 2.
+2. **Unclosed strings** are detected if the string literal is not closed before encountering a newline, carriage return, or end of file (including a trailing `\` with no following character).
 3. If neither error occurs, a **valid string literal** is recognized.
 
 A string literal has type **String**.
@@ -245,7 +315,7 @@ A string literal has type **String**.
 For lexical errors, the lexer must return the following tokens with specific lexemes:
 
 - **ERROR_TOKEN** with `<unrecognized char>` lexeme: when the lexer detects an unrecognized character.
-- **UNCLOSE_STRING** with `<unclosed string>` lexeme: when the lexer detects an unterminated string. The `<unclosed string>` lexeme does not include the opening quote.
+- **UNCLOSE_STRING** with `<unclosed string>` lexeme: when the lexer detects an unterminated string. The `<unclosed string>` lexeme does not include the opening quote **or** the terminating newline, carriage return, or EOF.
 - **ILLEGAL_ESCAPE** with `<wrong string>` lexeme: when the lexer detects an illegal escape in a string. The wrong string runs from the beginning of the string (without the opening quote) to the illegal escape.
 
 ---
@@ -482,11 +552,13 @@ The operand must be an assignable `Int` target (a `var` variable or a mutable me
 
 ### Function Call Expression
 
-A **function call** invokes a function:
+A **call** is a postfix operation: parentheses with an optional argument list are applied to a **postfix expression**:
 
-    <identifier>(<argument_list>)
+    <postfix_expression>(<argument_list>)
 
-where `<argument_list>` is a comma-separated list of expressions (or empty). The type of a function call expression is the function's return type. A **constructor call** has the same syntactic form, where `<identifier>` is a data class name; its type is that data class type.
+where `<argument_list>` is a comma-separated list of expressions (or empty). The callee is not limited to a bare name — any postfix expression may be followed by `()`, consistent with the postfix rules in [Operator Precedence and Associativity](#operator-precedence-and-associativity).
+
+The usual cases are `<identifier>(...)` for a **function call** (return type = the function's return type) or a **constructor call** (return type = that data class type).
 
 ### When Expression
 
@@ -497,6 +569,14 @@ where `<argument_list>` is a comma-separated list of expressions (or empty). The
         n < 0 -> -1
         else -> 0
     }
+
+Each branch has the form `<labels> -> <expression>`. Branch bodies must be expressions, not blocks. Optional separators (newlines or `;`) may appear between branches:
+
+    val x = when (d) { 1 -> 10; else -> 0 }   // valid
+
+### Expression Layout
+
+An `<expression>` must be written on a **single logical line**: it must not contain a `NEWLINE` between its operators and operands. For example, `val x = 1 +` followed by a newline and `2` is a **syntax error** — the newline ends the variable-declaration statement before the expression is complete. Long expressions must stay on one line, or use parentheses on that same line: `val x = (1 + 2)`.
 
 ### Assignment Expression
 
@@ -524,6 +604,14 @@ From highest to lowest:
 | `||` | left |
 | `=` | right |
 
+**Postfix grouping examples** (member access `.` is a postfix operator; higher precedence means it binds to its operands more tightly, not that it is evaluated first in time):
+
+| **Source** | **Parsed as** |
+| --- | --- |
+| `getPoint().x` | `(getPoint()).x` |
+| `(a++).x` | postfix `++` on `a`, then member `.x` on the result |
+| `(x.a)++` | member access `x.a`, then postfix `++` on that |
+
 ### Evaluation Order
 
 The left-hand operand of a binary operator is evaluated before any part of the right-hand operand. In a function or constructor invocation, the actual arguments are evaluated left to right. The logical operators `&&` and `||` use **short-circuit** evaluation: evaluation stops as soon as the result is known.
@@ -534,7 +622,37 @@ The left-hand operand of a binary operator is evaluated before any part of the r
 
 A statement indicates the action a program performs. Statements are separated by newlines (or optional semicolons). The kinds of statements are described below.
 
-**Statement list:** A `<statement_list>` is a (possibly empty) sequence of statements. This applies in a function body, in a block, and within each branch of a `when` statement. An empty statement list (e.g. `{ }`) is valid.
+### Separators and Statement/Declaration Lists
+
+A **separator** (`sep`) is either a `NEWLINE` token or a semicolon (`;`). Separators are used to delimit declarations and statements in lists.
+
+| **Context** | **Grammar pattern** | **Meaning** |
+| --- | --- | --- |
+| Top-level declaration list | `decl (sep+ decl)* sep*` | At least one `sep` between consecutive declarations; optional `sep` after the last |
+| Statement list (function body, block) | `stmt (sep+ stmt)* sep*` | At least one `sep` between consecutive statements; optional `sep` after the last |
+| `when` branch list | each branch ends with optional `sep*` | Separators between branches are optional; `;` is allowed |
+| Body of `if` / `while` / `for` / `else` | single `<statement>` | **No** `sep` required after the body — the construct ends at the natural end of that statement |
+
+`sep+` means **one or more** separators — multiple semicolons (`;;`) or multiple newlines between items are valid. `sep*` means zero or more — trailing separators after the last item are optional.
+
+Examples:
+
+    fun main() {} ;; fun cal() {}     // valid: sep+ between declarations
+
+    fun main() {
+        val x = 10 ;; continue        // valid: sep+ between statements
+    }
+
+    fun main() { {} break }           // invalid: missing sep between {} and break
+
+    fun main() { continue }           // valid: single statement, no sep needed before }
+
+    while (i < 10) { i++ }
+    printInt(0)                       // valid: newline between while stmt and next stmt in block
+
+**Statement list:** A `<statement_list>` is a (possibly empty) sequence of statements. This applies in a **function body** and in a **block** (`{ ... }`). An empty statement list (e.g. `{ }`) is valid.
+
+Each branch of a `when` statement or `when` expression is a **single** `<statement>` or `<expression>`, not a statement list. To run multiple statements in one branch, use a **block** as that branch's body (e.g. `1 -> { printInt(1); printInt(2) }`).
 
 ### Variable Declaration Statement
 
@@ -570,6 +688,17 @@ When nested if statements are used, an `else` associates with the nearest `if` l
 
 > MKotlin also allows `if`/`else` to be used as an **expression** (Kotlin-style), where both branches must produce a value of the same type and an `else` is required: `val m = if (a > b) a else b`.
 
+**If expression** (used where a value is needed — right-hand side of `=`, function argument, `return`, nested in another expression):
+
+    if (<expression>) <expression> else <expression>
+
+Branch bodies must be `<expression>` tokens, **not** blocks. Block braces `{ }` are statements and cannot appear as the direct branch of an if expression:
+
+    val x = if (a) 1 else 0           // valid
+    val x = if (a) { 1 } else { 2 } // invalid syntax
+
+No separator is required after the body of an `if` statement or its `else` branch — each is a single `<statement>`.
+
 For example:
 
     if (flag) {
@@ -584,7 +713,7 @@ The **while statement** repeats while a condition is true:
 
     while (<expression>) <statement>
 
-The `<expression>` must have type **Boolean**.
+The `<expression>` must have type **Boolean**. No separator is required after the loop body — it is a single `<statement>`.
 
 For example:
 
@@ -605,7 +734,7 @@ Where:
 - `<identifier>` introduces a fresh, immutable loop variable of type `Int`, visible only inside the loop body. It cannot be reassigned inside the body.
 - `<start>` and `<end>` are `Int` expressions. Iteration covers `<start>, <start>+1, ..., <end>` inclusive (an empty iteration if `<start> > <end>`).
 
-Lexical scope for the loop variable and body follows [Scope Rules](#scope-rules).
+Lexical scope for the loop variable and body follows [Scope Rules](#scope-rules). No separator is required after the loop body — it is a single `<statement>`.
 
 For example:
 
@@ -645,7 +774,13 @@ Where:
 
 Each guard must have type **Boolean**; the first `true` guard's statement executes.
 
-For both forms, the right-hand side of `->` is a single statement (commonly a block). At most one `else` branch is allowed.
+For both forms, the right-hand side of `->` is a single statement (commonly a block). At most one `else` branch is allowed. Optional separators (newlines or `;`) may appear after each branch; they are not required. The branch list may be **empty** — a `when` with no branches (and no `else`) is valid syntax and has no effect:
+
+    when (a) { }              // valid: empty when statement
+
+    when (d) { 1 -> 10; else -> 0 }   // valid: semicolon between branches
+
+This differs from **when expression** (see [When Expression](#when-expression)), where every branch must produce a value of the same type and an `else` branch is required.
 
 For example:
 
@@ -993,7 +1128,7 @@ For AST node conventions and `repr()` formats used in Assignment 2, see [AST Rep
 
 ## Grammar Summary
 
-An MKotlin program is a (possibly empty) sequence of data class declarations and function declarations.
+An MKotlin program is a (possibly empty) sequence of data class declarations and function declarations. Consecutive declarations are separated by at least one newline or semicolon.
 
 **Data Class Declarations:**
 
@@ -1029,7 +1164,35 @@ The main structural elements include:
 10. Logical OR (`||`)
 11. Assignment (`=`)
 
+**Lexical and layout rules** (summary):
+
+- Token `RANGE` (`..`) takes precedence over float literals such as `1.` when lexing `1..2`.
+- Expressions do not contain newlines; statement/declaration lists use `sep+` between items and optional `sep*` after the last.
+- Unclosed block comments at EOF are not a defined lexical error.
+- `UNCLOSE_STRING` lexemes exclude the opening quote and any terminating `\n`/`\r`.
+
 **Note:** The complete grammar rules must be defined in the ANTLR4 grammar file (`MKotlin.g4`) by the student. This specification provides the requirements and examples; the detailed grammar implementation is part of the assignment.
+
+---
+
+## Revision History
+
+### Version 1.1 (July 2026)
+
+Documentation clarifications for Assignment 1 (lexer/parser). **No change to the MKotlin language semantics** — only the specification text was expanded to match the reference grammar and common student questions.
+
+- **Newlines and Layout** — when a newline may appear before `{` or inside `()` (function/`when` headers vs `if`/`while`/`for` bodies).
+- **Lexical Tokenization** — `RANGE` (`..`) vs float literals (`1.`, `.5`); empty parentheses may not contain `NEWLINE`.
+- **Separators and Statement/Declaration Lists** — `sep+` / `sep*` rules for declarations, statements, and `when` branches; multiple `;;` allowed.
+- **String errors** — `UNCLOSE_STRING` lexeme excludes terminating `\n`/`\r`; `\` at EOF is unclosed string, not `ILLEGAL_ESCAPE`.
+- **Comments** — line-comment end-of-line includes `\r`; unclosed block comment at EOF is not a defined lexical error.
+- **Expressions** — single-line expressions; if/when expression branch rules; postfix call on any postfix expression; postfix grouping examples (`getPoint().x`, `(a++).x`).
+- **When statement** — empty branch list allowed; optional separators between branches.
+- **Control flow** — no separator required after a single-statement `if`/`while`/`for`/`else` body.
+
+### Version 1.0 (June 2026)
+
+Initial public specification.
 
 ---
 
