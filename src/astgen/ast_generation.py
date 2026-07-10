@@ -38,7 +38,95 @@ class ASTGeneration(_BASE):
     #      return nodes.Program(decls)                                   #
     # ----------------------------------------------------------------- #
     def visitProgram(self, ctx):
-        raise NotImplementedError(
-            "Assignment 2: implement ASTGeneration by overriding the "
-            "MKotlinVisitor methods to build nodes from src/utils/nodes.py."
-        )
+        return nodes.Program(self.visit(ctx.declList()))
+    
+    def visitDeclList(self, ctx):
+        return self.visit(ctx.declPrime()) if ctx.declPrime() else []
+
+    def visitDeclPrime(self, ctx):
+        return [self.visit(ctx.decl())] + self.visit(ctx.declPrime()) if ctx.declPrime() else [self.visit(ctx.decl())]
+    
+    def visitDecl(self, ctx):
+        if ctx.dataClassDecl():
+            return self.visit(ctx.dataClassDecl())
+        elif ctx.funcDecl():
+            return self.visit(ctx.funcDecl())
+
+    def visitDataClassDecl(self, ctx):
+        return nodes.DataClassDecl(ctx.IDENT().getText(), self.visit(ctx.memList()) if ctx.memList() else [])
+
+    def visitMemList(self, ctx):
+        return [self.visit(ctx.mem())] + self.visit(ctx.memList()) if ctx.memList() else [self.visit(ctx.mem())]
+
+    def visitMem(self, ctx):
+        return nodes.MemberDecl(ctx.IDENT().getText(), self.visit(ctx.typ()))
+
+    def visitTyp(self, ctx):
+        if ctx.INT():
+            return nodes.IntType()
+        elif ctx.FLOAT():
+            return nodes.FloatType()
+        elif ctx.BOOLEAN():
+            return nodes.BoolType()
+        elif ctx.STRING():
+            return nodes.StringType()
+        elif ctx.IDENT():
+            return nodes.ClassType(ctx.IDENT().getText())
+
+    def visitFuncDecl(self, ctx):
+        return nodes.FuncDecl(ctx.IDENT().getText(), self.visit(ctx.paramList()), self.visit(ctx.rettype()), self.visit(ctx.body()))
+
+    def visitParamList(self, ctx):
+        return self.visit(ctx.paramPrime()) if ctx.paramPrime() else []
+    
+    def visitParamPrime(self, ctx):
+        return [self.visit(ctx.param())] + self.visit(ctx.paramPrime()) if ctx.paramPrime() else [self.visit(ctx.param())]
+
+    def visitParam(self, ctx):
+        return nodes.Param(ctx.IDENT().getText(), self.visit(ctx.typ()))
+
+    def visitBody(self, ctx):
+        return nodes.Block(self.visit(ctx.stmtList()))
+
+    def visitRettype(self, ctx):
+        return self.visit(ctx.returnableTyp()) if ctx.returnableTyp() else None
+    
+    def visitReturnableTyp(self, ctx):
+        if ctx.typ():
+            return self.visit(ctx.typ())
+        elif ctx.UNIT():
+            return nodes.UnitType()
+
+    def visitStmtList(self, ctx):
+        return self.visit(ctx.stmtPrime()) if ctx.stmtPrime() else []
+
+    def visitStmtPrime(self, ctx):
+        return [self.visit(ctx.stmt())] + self.visit(ctx.stmtPrime()) if ctx.stmtPrime() else [self.visit(ctx.stmt())]
+
+    def visitStmt(self, ctx):
+        if ctx.valdecl():
+            return self.visit(ctx.valdecl())
+        elif ctx.blkstmt():
+            return self.visit(ctx.blkstmt())
+        elif ctx.ifstmt():
+            return self.visit(ctx.ifstmt())
+        elif ctx.whilestmt():
+            return self.visit(ctx.whilestmt())
+        elif ctx.forstmt():
+            return self.visit(ctx.forstmt())
+        elif ctx.whenstmt():
+            return self.visit(ctx.whenstmt())
+        elif ctx.brkstmt():
+            return self.visit(ctx.brkstmt())
+        elif ctx.contstmt():
+            return self.visit(ctx.contstmt())
+        elif ctx.retstmt():
+            return self.visit(ctx.retstmt())
+        elif ctx.exprstmt():
+            return self.visit(ctx.exprstmt())
+    
+    def visitValdecl(self, ctx):
+        if ctx.VAL():
+            return nodes.VarDecl(ctx.IDENT().getText(), False, self.visit(ctx.typ()) if ctx.typ() else None, self.visit(ctx.expr()))
+        elif ctx.VAR():
+            return nodes.VarDecl(ctx.IDENT().getText(), True. self.visit(ctx.typ()) if ctx.typ() else None, self.visit(ctx.expr()) if ctx.expr() else None)
