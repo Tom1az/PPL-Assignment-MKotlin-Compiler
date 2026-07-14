@@ -129,4 +129,53 @@ class ASTGeneration(_BASE):
         if ctx.VAL():
             return nodes.VarDecl(ctx.IDENT().getText(), False, self.visit(ctx.typ()) if ctx.typ() else None, self.visit(ctx.expr()))
         elif ctx.VAR():
-            return nodes.VarDecl(ctx.IDENT().getText(), True. self.visit(ctx.typ()) if ctx.typ() else None, self.visit(ctx.expr()) if ctx.expr() else None)
+            return nodes.VarDecl(ctx.IDENT().getText(), True, self.visit(ctx.typ()) if ctx.typ() else None, self.visit(ctx.expr()) if ctx.expr() else None)
+
+    def visitBlkstmt(self, ctx):
+        return nodes.Block(self.visit(ctx.stmtList()))
+
+    def visitIfstmt(self, ctx):
+        return nodes.If(self.visit(ctx.expr()), self.visit(ctx.stmt(0)), self.visit(ctx.stmt(1)) if ctx.stmt(1) else None)
+
+    def visitWhilestmt(self, ctx):
+        return nodes.While(self.visit(ctx.expr()), self.visit(ctx.stmt()))
+
+    def visitForstmt(self, ctx):
+        return nodes.For(ctx.IDENT().getText(), self.visit(ctx.expr(0)), self.visit(ctx.expr(1)), self.visit(ctx.stmt()))
+
+    def visitWhenstmt(self, ctx):
+        if ctx.expr():
+            return nodes.When(self.visit(ctx.expr()), self.visit(ctx.whenStmtSubjBranchList()))
+        else:
+            return nodes.When(None, self.visit(ctx.whenStmtConditionlessBranchList()))
+
+    def visitWhenStmtSubjBranchList(self, ctx):
+        return [self.visit(ctx.whenStmtSubjBranch())] + self.visit(ctx.whenStmtSubjBranchList()) if ctx.whenStmtSubjBranchList() else [self.visit(ctx.whenStmtSubjBranch())]
+
+    def visitWhenStmtConditionlessBranchList(self, ctx):
+        return [self.visit(ctx.whenStmtConditionlessBranch())] + self.visit(ctx.whenStmtConditionlessBranchList()) if ctx.whenStmtConditionlessBranchList() else [self.visit(ctx.whenStmtConditionlessBranch())]
+
+    def visitWhenStmtSubjBranch(self, ctx):
+        if ctx.exprPrime():
+            return nodes.WhenBranch(self.visit(ctx.exprPrime()), self.visit(ctx.stmt()))
+        else:
+            return nodes.WhenBranch(None, self.visit(ctx.stmt()))
+
+    def visitWhenStmtConditionlessBranch(self, ctx):
+        if ctx.expr():
+            return nodes.WhenBranch([self.visit(ctx.expr())], self.visit(ctx.stmt()))
+        else:
+            return nodes.WhenBranch(None, self.visit(ctx.stmt()))
+
+    def visitBrkstmt(self, ctx):
+        return nodes.Break()
+
+    def visitContstmt(self, ctx):
+        return nodes.Continue()
+
+    def visitRetstmt(self, ctx):
+        return nodes.Return(self.visit(ctx.expr()) if ctx.expr() else None)
+
+    def visitExprstmt(self, ctx):
+        return nodes.ExprStmt(self.visit(ctx.expr()))
+    
