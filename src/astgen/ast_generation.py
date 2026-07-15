@@ -97,6 +97,7 @@ class ASTGeneration(_BASE):
         elif ctx.UNIT():
             return nodes.UnitType()
 
+    # statements
     def visitStmtList(self, ctx):
         return self.visit(ctx.stmtPrime()) if ctx.stmtPrime() else []
 
@@ -132,7 +133,7 @@ class ASTGeneration(_BASE):
             return nodes.VarDecl(ctx.IDENT().getText(), True, self.visit(ctx.typ()) if ctx.typ() else None, self.visit(ctx.expr()) if ctx.expr() else None)
 
     def visitBlkstmt(self, ctx):
-        return nodes.Block(self.visit(ctx.stmtList()))
+        return self.visit(ctx.body())
 
     def visitIfstmt(self, ctx):
         return nodes.If(self.visit(ctx.expr()), self.visit(ctx.stmt(0)), self.visit(ctx.stmt(1)) if ctx.stmt(1) else None)
@@ -150,22 +151,22 @@ class ASTGeneration(_BASE):
             return nodes.When(None, self.visit(ctx.whenStmtConditionlessBranchList()))
 
     def visitWhenStmtSubjBranchList(self, ctx):
-        return [self.visit(ctx.whenStmtSubjBranch())] + self.visit(ctx.whenStmtSubjBranchList()) if ctx.whenStmtSubjBranchList() else [self.visit(ctx.whenStmtSubjBranch())]
+        if ctx.whenStmtSubjBranch():
+            return [self.visit(ctx.whenStmtSubjBranch())] + self.visit(ctx.whenStmtSubjBranchList()) if ctx.whenStmtSubjBranchList() else [self.visit(ctx.whenStmtSubjBranch())]
+        else:
+            return []
 
     def visitWhenStmtConditionlessBranchList(self, ctx):
-        return [self.visit(ctx.whenStmtConditionlessBranch())] + self.visit(ctx.whenStmtConditionlessBranchList()) if ctx.whenStmtConditionlessBranchList() else [self.visit(ctx.whenStmtConditionlessBranch())]
+        if ctx.whenStmtConditionlessBranch():
+            return [self.visit(ctx.whenStmtConditionlessBranch())] + self.visit(ctx.whenStmtConditionlessBranchList()) if ctx.whenStmtConditionlessBranchList() else [self.visit(ctx.whenStmtConditionlessBranch())]
+        else:
+            return []
 
     def visitWhenStmtSubjBranch(self, ctx):
-        if ctx.exprPrime():
-            return nodes.WhenBranch(self.visit(ctx.exprPrime()), self.visit(ctx.stmt()))
-        else:
-            return nodes.WhenBranch(None, self.visit(ctx.stmt()))
+        return nodes.WhenBranch(self.visit(ctx.exprPrime()), self.visit(ctx.stmt())) if ctx.exprPrime() else nodes.WhenBranch(None, self.visit(ctx.stmt()))
 
     def visitWhenStmtConditionlessBranch(self, ctx):
-        if ctx.expr():
-            return nodes.WhenBranch([self.visit(ctx.expr())], self.visit(ctx.stmt()))
-        else:
-            return nodes.WhenBranch(None, self.visit(ctx.stmt()))
+        return nodes.WhenBranch(None, self.visit(ctx.stmt())) if ctx.ELSE() else nodes.WhenBranch([self.visit(ctx.expr())], self.visit(ctx.stmt()))
 
     def visitBrkstmt(self, ctx):
         return nodes.Break()
@@ -177,5 +178,144 @@ class ASTGeneration(_BASE):
         return nodes.Return(self.visit(ctx.expr()) if ctx.expr() else None)
 
     def visitExprstmt(self, ctx):
-        return nodes.ExprStmt(self.visit(ctx.expr()))
+        e = self.visit(ctx.expr())
+        if isinstance(e, nodes.AssignExpr):
+            return nodes.Assign(e.lhs, e.rhs)
+        return nodes.ExprStmt(e)
+
+    # expressions
+    def visitExpr(self, ctx):
+        return self.visit(ctx.asn())
+
+    def visitAsn(self, ctx):
+        if ctx.ASGN():
+            return nodes.AssignExpr(self.visit(ctx.lor()), self.visit(ctx.asn()))
+        else: 
+            return self.visit(ctx.lor()) 
+
+    def visitLor(self, ctx):
+        if ctx.OR():
+            return nodes.BinaryOp(ctx.OR().getText(), self.visit(ctx.lor()), self.visit(ctx.land()))
+        return self.visit(ctx.land())
+
+    def visitLand(self, ctx):
+        if ctx.AND():
+            return nodes.BinaryOp(ctx.AND().getText(), self.visit(ctx.land()), self.visit(ctx.eq()))
+        return self.visit(ctx.eq())
+
+    def visitEq(self, ctx):
+        if ctx.EQ():
+            return nodes.BinaryOp(ctx.EQ().getText(), self.visit(ctx.eq()), self.visit(ctx.ord_()))
+        elif ctx.NEQ():
+            return nodes.BinaryOp(ctx.NEQ().getText(), self.visit(ctx.eq()), self.visit(ctx.ord_()))
+        return self.visit(ctx.ord_())
+
+    def visitOrd(self, ctx):
+        if ctx.LT():
+            return nodes.BinaryOp(ctx.LT().getText(), self.visit(ctx.ord_()), self.visit(ctx.range_()))
+        elif ctx.LTE():
+            return nodes.BinaryOp(ctx.LTE().getText(), self.visit(ctx.ord_()), self.visit(ctx.range_()))
+        elif ctx.GT():
+            return nodes.BinaryOp(ctx.GT().getText(), self.visit(ctx.ord_()), self.visit(ctx.range_()))
+        elif ctx.GTE():
+            return nodes.BinaryOp(ctx.GTE().getText(), self.visit(ctx.ord_()), self.visit(ctx.range_()))
+        return self.visit(ctx.range_())
+
+    def visitRange(self, ctx):
+        if ctx.RANGE():
+            return nodes.BinaryOp(ctx.RANGE().getText(), self.visit(ctx.range_()), self.visit(ctx.addsub()))
+        return self.visit(ctx.addsub())
+
+    def visitAddsub(self, ctx):
+        if ctx.ADD():
+            return nodes.BinaryOp(ctx.ADD().getText(), self.visit(ctx.addsub()), self.visit(ctx.muldivmod()))
+        elif ctx.SUB():
+            return nodes.BinaryOp(ctx.SUB().getText(), self.visit(ctx.addsub()), self.visit(ctx.muldivmod()))
+        return self.visit(ctx.muldivmod())
+
+    def visitMuldivmod(self, ctx):
+        if ctx.MUL():
+            return nodes.BinaryOp(ctx.MUL().getText(), self.visit(ctx.muldivmod()), self.visit(ctx.unary()))
+        elif ctx.DIV():
+            return nodes.BinaryOp(ctx.DIV().getText(), self.visit(ctx.muldivmod()), self.visit(ctx.unary()))
+        elif ctx.MOD():
+            return nodes.BinaryOp(ctx.MOD().getText(), self.visit(ctx.muldivmod()), self.visit(ctx.unary()))
+        return self.visit(ctx.unary())
+
+    def visitUnary(self, ctx):
+        if ctx.NOT():
+            return nodes.UnaryOp(ctx.NOT().getText(), self.visit(ctx.unary()))
+        elif ctx.SUB():
+            return nodes.UnaryOp(ctx.SUB().getText(), self.visit(ctx.unary()))
+        elif ctx.ADD():
+            return nodes.UnaryOp(ctx.ADD().getText(), self.visit(ctx.unary()))
+        elif ctx.INCREMENT():
+            return nodes.UnaryOp(ctx.INCREMENT().getText(), self.visit(ctx.unary()))
+        elif ctx.DECREMENT():
+            return nodes.UnaryOp(ctx.DECREMENT().getText(), self.visit(ctx.unary()))
+        return self.visit(ctx.postfix())
+
+    def visitPostfix(self, ctx):
+        if ctx.LP():
+            return nodes.CallExpr(self.visit(ctx.postfix()).name, self.visit(ctx.exprList()))
+        elif ctx.MEMACC():
+            return nodes.MemberAccess(self.visit(ctx.postfix()), ctx.IDENT().getText())
+        elif ctx.INCREMENT():
+            return nodes.PostfixOp(ctx.INCREMENT().getText(), self.visit(ctx.postfix()))
+        elif ctx.DECREMENT():
+            return nodes.PostfixOp(ctx.DECREMENT().getText(), self.visit(ctx.postfix()))
+        return self.visit(ctx.primary())
+
+    def visitExprList(self, ctx):
+        return self.visit(ctx.exprPrime()) if ctx.exprPrime() else []
+
+    def visitExprPrime(self, ctx):
+        return [self.visit(ctx.expr())] + self.visit(ctx.exprPrime()) if ctx.exprPrime() else [self.visit(ctx.expr())]
+
+    def visitPrimary(self, ctx):
+        if ctx.INTLIT():
+            return nodes.IntLit(int(ctx.INTLIT().getText().replace("_", "")))
+        elif ctx.FLOATLIT():
+            return nodes.FloatLit(float(ctx.FLOATLIT().getText().rstrip("fF")))
+        elif ctx.TRUE():
+            return nodes.BoolLit(True)
+        elif ctx.FALSE():
+            return nodes.BoolLit(False)
+        elif ctx.STRINGLIT():
+            return nodes.StringLit(ctx.STRINGLIT().getText())
+        elif ctx.ifexpr():
+            return self.visit(ctx.ifexpr())
+        elif ctx.whenexpr():
+            return self.visit(ctx.whenexpr())
+        elif ctx.IDENT():
+            return nodes.Id(ctx.IDENT().getText())
+        else:
+            return self.visit(ctx.expr())
+
+    def visitIfexpr(self, ctx):
+        return nodes.IfExpr(self.visit(ctx.expr(0)), self.visit(ctx.expr(1)), self.visit(ctx.expr(2)))
+
+    def visitWhenexpr(self, ctx):
+        if ctx.expr():
+            return nodes.WhenExpr(self.visit(ctx.expr()), self.visit(ctx.whenExprSubjBranchList()))
+        else:
+            return nodes.WhenExpr(None, self.visit(ctx.whenExprConditionlessBranchList()))
+
+    def visitWhenExprSubjBranchList(self, ctx):
+        if ctx.whenExprSubjBranch():
+            return [self.visit(ctx.whenExprSubjBranch())] + self.visit(ctx.whenExprSubjBranchList()) if ctx.whenExprSubjBranchList() else [self.visit(ctx.whenExprSubjBranch())]
+        else:
+            return []
+
+    def visitWhenExprConditionlessBranchList(self, ctx):
+        if ctx.whenExprConditionlessBranch():
+            return [self.visit(ctx.whenExprConditionlessBranch())] + self.visit(ctx.whenExprConditionlessBranchList()) if ctx.whenExprConditionlessBranchList() else [self.visit(ctx.whenExprConditionlessBranch())]
+        else:
+            return []
+
+    def visitWhenExprSubjBranch(self, ctx):
+        return nodes.WhenBranch(self.visit(ctx.exprPrime()), self.visit(ctx.expr())) if ctx.exprPrime() else nodes.WhenBranch(None, self.visit(ctx.expr()))
+
+    def visitWhenExprConditionlessBranch(self, ctx):
+        return nodes.WhenBranch(None, self.visit(ctx.expr(0))) if ctx.ELSE() else nodes.WhenBranch([self.visit(ctx.expr(0))], self.visit(ctx.expr(1)))
     
