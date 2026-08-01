@@ -91,10 +91,10 @@ The `ASTGeneration` class must inherit from `MKotlinVisitor`, return appropriate
 
 ### Error Types to Detect
 
-1. **Redeclared** — duplicate variable / parameter / function / data class / loop variable / member.
+1. **Redeclared** — duplicate variable / parameter / function / data class / member in a scope where duplicate declarations are not allowed.
 2. **UndeclaredIdentifier** — use of an undeclared variable, parameter, or loop variable.
-3. **UndeclaredFunction** — call to an undeclared function.
-4. **UndeclaredClass** — use of an undeclared data class type.
+3. **UndeclaredFunction** — call whose name resolves to neither a declared function nor a declared data class.
+4. **UndeclaredClass** — use of an undeclared data class name in a type position.
 5. **TypeCannotBeInferred** — an un-annotated `var` (or inferred return) whose type cannot be locally determined.
 6. **TypeMismatchInStatement** — non-`Boolean` condition, bad range bounds, return mismatch, assignment/declaration mismatch, reassigning a `val`.
 7. **TypeMismatchInExpression** — operator/operand mismatch, bad equality, `when` label mismatch, bad call arguments, invalid member access.

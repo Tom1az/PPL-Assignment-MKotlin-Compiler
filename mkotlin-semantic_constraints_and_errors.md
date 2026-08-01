@@ -1,6 +1,6 @@
 # MKotlin Programming Language — Semantic Constraints and Error Types
 
-**Version 1.0 - June 2026**
+**Version 1.1 - July 2026**
 
 This document defines the static semantic constraints checked by the MKotlin compiler in **Assignment 3 (Static Semantic Analysis)**, and the exact error types your `StaticChecker` must raise. It complements the [MKotlin Specification](mkotlin_specification.md) and the [AST Representation](mkotlin-ast_representation.md) document; read them together.
 
@@ -35,7 +35,7 @@ The environment is a stack of scopes:
 
 - **Global scope:** all function and data class names (including built-ins).
 - **Function scope:** the parameters of the function, plus the top-level declarations of the body.
-- **Block / control scopes:** each block `{ ... }`, each `for` (its loop variable), and each `when`/`if`/`while` body introduces a nested scope per the specification.
+- **Block / control scopes:** each block `{ ... }` and each `when`/`if`/`while` body introduces a nested scope per the specification. A `for` introduces a loop-variable scope nested under the enclosing scope, and its body is checked in a further inner scope nested under the loop-variable scope.
 
 Resolution searches innermost-to-outermost. Shadowing an **outer** local in an **inner** scope is permitted. Re-declaring a name **in the same scope** is a `Redeclared` error. Reusing a parameter name as a top-level body variable (same scope as parameters) is `Redeclared`.
 
@@ -47,13 +47,13 @@ The initializer of a declaration is checked in the scope **before** the new name
 
 Your `StaticChecker` must detect exactly these eight error types. Each corresponds to an exception class in `src/semantics/static_error.py`.
 
-1. **Redeclared** — A variable, parameter, function, data class, loop variable, or data class member is declared more than once in a scope where that is not allowed. Carries the kind (Variable / Parameter / Function / Class / Constant / Member) and the offending name.
+1. **Redeclared** — A variable, parameter, function, data class, or data class member is declared more than once in a scope where that is not allowed. Carries the kind (Variable / Parameter / Function / Class / Constant / Member) and the offending name.
 
 2. **UndeclaredIdentifier** — Use of a variable, parameter, or loop variable that is not in scope.
 
-3. **UndeclaredFunction** — A call `f(args)` where `f` is not a declared (or built-in) function name. (A constructor call to an undeclared data class name is `UndeclaredIdentifier` if `f` is also not a type, but if the name is being used specifically in type position, see `UndeclaredClass`.)
+3. **UndeclaredFunction** — A call `f(args)` where `f` resolves to neither a declared (or built-in) function nor a declared data class. A call whose name is completely unknown is treated as an unknown function call.
 
-4. **UndeclaredClass** — Use of a data class type name (in an annotation, parameter type, member type, or constructor call) that has not been declared.
+4. **UndeclaredClass** — Use of an undeclared data class name in a type position (a variable annotation, parameter type, return type, or member type).
 
 5. **TypeCannotBeInferred** — An un-annotated `var` (or inferred return type) whose type cannot be determined from its first usage under the local inference rules. The argument is the AST node where inference fails; tests expect `Type Cannot Be Inferred: ` + `repr(node)` (e.g. `BinaryOp(*, Id(a), Id(b))` for `val c = a * b` when both operands are unknown).
 
@@ -108,7 +108,8 @@ Your `StaticChecker` must detect exactly these eight error types. Each correspon
 ### For
 
 - The range `a..b` requires `type(a)` and `type(b)` to be `Int` → else `TypeMismatchInStatement`.
-- The loop variable is an immutable `Int` in scope only within the loop. Assigning to it inside the body → `TypeMismatchInStatement`. Redeclaring it as a top-level body declaration in the same loop-variable scope → `Redeclared`.
+- The loop variable is an immutable `Int` in scope only within the loop construct (header and body). Assigning to it inside the body → `TypeMismatchInStatement`.
+- The body is checked in a scope nested under the loop-variable scope. A declaration in the body may therefore shadow the loop variable and is not a `Redeclared` error.
 
 ### When
 
@@ -128,8 +129,7 @@ Your `StaticChecker` must detect exactly these eight error types. Each correspon
 ### Expressions
 
 - **Identifiers:** undeclared variable/parameter/loop variable → `UndeclaredIdentifier`.
-- **Function calls:** unknown function name → `UndeclaredFunction`; wrong argument count or types → `TypeMismatchInExpression`.
-- **Constructor calls:** unknown data class name → `UndeclaredClass`; wrong argument count or types → `TypeMismatchInExpression`.
+- **Calls `f(args)`:** resolve `f` against declared functions and data classes. A declared function produces a function call; a declared data class produces a constructor call; if neither declaration exists → `UndeclaredFunction`. Wrong argument count or types for either kind of resolved call → `TypeMismatchInExpression`. Resolution is based on declarations, not identifier capitalization.
 - **Member access `e.m`:** `type(e)` must be a data class type → else `TypeMismatchInExpression`; `m` must be a member of that data class → else `TypeMismatchInExpression`.
 - **Operators:** operand types must satisfy the operator's rules (see specification) → else `TypeMismatchInExpression`.
 - **Increment/decrement:** operand must be an assignable `Int` target → else `TypeMismatchInExpression` (wrong type) or `TypeMismatchInStatement` (assigning a `val`/loop variable), per the offending condition.
@@ -170,7 +170,7 @@ Inference is **local** and **deterministic**, matching the specification:
 
     fun main() {
         val a = compute(3)    // UndeclaredFunction(compute)
-        val p = Vec(1, 2)     // UndeclaredClass(Vec)  (no such data class)
+        var p: Vec            // UndeclaredClass(Vec) — type position
     }
 
 **TypeMismatchInStatement (condition not Boolean):**

@@ -41,8 +41,8 @@ def test_004_undeclared_function():
 
 
 def test_005_undeclared_class():
-    """5. UndeclaredClass"""
-    src = "fun main() {\n  val p = Vec(1, 2)\n}"
+    """5. UndeclaredClass in type position"""
+    src = "fun main() {\n  var p: Vec\n}"
     assert Checker.check(src) == "Undeclared Class: Vec"
 
 
