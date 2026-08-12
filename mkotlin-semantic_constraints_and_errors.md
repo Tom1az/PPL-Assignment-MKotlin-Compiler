@@ -47,7 +47,7 @@ The initializer of a declaration is checked in the scope **before** the new name
 
 Your `StaticChecker` must detect exactly these eight error types. Each corresponds to an exception class in `src/semantics/static_error.py`.
 
-1. **Redeclared** — A variable, parameter, function, data class, or data class member is declared more than once in a scope where that is not allowed. Carries the kind (Variable / Parameter / Function / Class / Constant / Member) and the offending name.
+1. **Redeclared** — A variable, parameter, function, data class, or data class member is declared more than once in a scope where that is not allowed. Carries the kind (Variable / Parameter / Function / Class / Member) and the offending name. The kind for a variable declaration is `Variable` for both `val` and `var`; the `Constant` kind in `static_error.py` is not used for reporting.
 
 2. **UndeclaredIdentifier** — Use of a variable, parameter, or loop variable that is not in scope.
 
@@ -90,7 +90,7 @@ Your `StaticChecker` must detect exactly these eight error types. Each correspon
 ### Variable Declaration
 
 - A `val` requires an initializer; a `val` without one is a structural error surfaced as `TypeCannotBeInferred` on the declaration (there is nothing to infer from and reassignment is forbidden).
-- A redeclaration in the same scope → `Redeclared(Variable, name)` (or `Constant` for a `val`, if your error classes distinguish; otherwise `Variable`).
+- A redeclaration in the same scope → `Redeclared(Variable, name)`, whether the declaration is a `val` or a `var`.
 - With an explicit annotation `T` and an initializer `e`: `type(e)` must match `T` (with `Int → Float` widening) → else `TypeMismatchInStatement`. An undeclared `T` → `UndeclaredClass`.
 - With inference (no annotation), see [Type Inference Obligations](#type-inference-obligations).
 

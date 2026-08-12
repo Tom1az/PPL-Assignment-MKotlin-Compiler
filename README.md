@@ -10,10 +10,12 @@ A compiler implementation for **MKotlin**, a simple Kotlin-like programming lang
 
 This is a mini project for the **Principles of Programming Languages** course that implements a compiler for **MKotlin**, a custom Kotlin-inspired language designed for educational purposes. The project follows a classic multi-phase pipeline (lexical analysis → parsing → AST generation → semantic analysis → code generation) and adopts Kotlin's surface syntax with a genuine `Boolean` type.
 
-📋 **For the full language specification, see [MKotlin Specification](mkotlin_specification.md)** (current version: **1.1**).  
+📋 **For the full language specification, see [MKotlin Specification](mkotlin_specification.md)** (current version: **1.2**).  
 📋 **For AST node conventions (Assignment 2), see [AST Representation](mkotlin-ast_representation.md).**
 
 ### Specification changelog
+
+**Version 1.2 (August 2026)** — consistency fix: `String` equality (`==` / `!=`) is supported (aligned with the Type System and `when` subject rules); string ordering and concatenation remain unsupported.
 
 **Version 1.1 (July 2026)** — clarifications for BTL 1 only; the language rules themselves are unchanged. The spec now documents layout and lexer/parser edge cases that were previously implicit: newline vs `;` separators (`sep+` / `sep*`), `..` tokenization vs float literals, empty `when` branches, if/when expression vs statement forms, expression single-line rule, and string-comment lexical details. See [Revision History](mkotlin_specification.md#revision-history) in the specification for the full list.
 

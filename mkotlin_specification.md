@@ -1,6 +1,6 @@
 # MKotlin Programming Language Specification
 
-**Version 1.1 - July 2026**
+**Version 1.2 - August 2026**
 
 ## Table of Contents
 
@@ -229,8 +229,8 @@ The following is a list of **valid** operators along with their meaning. Note th
 | `*` | Multiplication | Int or Float |
 | `/` | Division | Int or Float |
 | `%` | Modulus | Int only |
-| `==` | Equal | Int, Float, or Boolean |
-| `!=` | Not equal | Int, Float, or Boolean |
+| `==` | Equal | Int, Float, Boolean, String, or same data class |
+| `!=` | Not equal | Int, Float, Boolean, String, or same data class |
 | `<` | Less than | Int or Float |
 | `>` | Greater than | Int or Float |
 | `<=` | Less than or equal | Int or Float |
@@ -523,13 +523,13 @@ Ordering operators compare `Int` or `Float` operands and produce a **Boolean**:
 | --- | --- | --- | --- |
 | `<` `<=` `>` `>=` | Ordering | Int or Float | Boolean |
 
-Equality operators produce a **Boolean** and apply when both operands have the same comparable type (`Int`, `Float`, `Boolean`, or the same data class type):
+Equality operators produce a **Boolean** and apply when both operands have the same comparable type (`Int`, `Float`, `Boolean`, `String`, or the same data class type):
 
 | **Operator** | **Meaning** | **Operand Type** | **Result Type** |
 | --- | --- | --- | --- |
-| `==` `!=` | Equality | Int, Float, Boolean, or same data class | Boolean |
+| `==` `!=` | Equality | Int, Float, Boolean, String, or same data class | Boolean |
 
-Mixed `Int`/`Float` equality is allowed and follows numeric promotion (`Int == Float` is valid). `String` equality is **not** supported in Version 1.0.
+Mixed `Int`/`Float` equality is allowed and follows numeric promotion (`Int == Float` is valid). `String` equality (`"a" == "b"`, `"a" != "b"`) **is** supported; string ordering (`<`, `<=`, `>`, `>=`) is not.
 
 ### Logical Expression
 
@@ -925,7 +925,7 @@ Arithmetic (`+ - * /`): `Int op Int → Int`; if either operand is `Float`, resu
 
 Ordering (`< <= > >=`): `Int`/`Float` operands → `Boolean`.
 
-Equality (`== !=`): same comparable type (with `Int`/`Float` promotion) → `Boolean`.
+Equality (`== !=`): same comparable type (`Int`, `Float`, `Boolean`, `String`, or the same data class; with `Int`/`Float` promotion) → `Boolean`.
 
 Logical (`&& ||`): `Boolean` operands → `Boolean`. `!`: `Boolean` → `Boolean`.
 
@@ -953,7 +953,7 @@ Logical (`&& ||`): `Boolean` operands → `Boolean`. `!`: `Boolean` → `Boolean
 - **Arithmetic** (`+ - * /`): `Int` or `Float` (result `Int` if both `Int`, else `Float`).
 - **Modulus** (`%`): `Int` only.
 - **Ordering** (`< <= > >=`): `Int` or `Float`, result `Boolean`.
-- **Equality** (`== !=`): same comparable type, result `Boolean`.
+- **Equality** (`== !=`): same comparable type (`Int`, `Float`, `Boolean`, `String`, or the same data class), result `Boolean`.
 - **Logical** (`&& || !`): `Boolean` only, result `Boolean`.
 - **Increment/decrement** (`++ --`): `Int` only.
 - **Range** (`..`): `Int` only.
@@ -961,7 +961,7 @@ Logical (`&& ||`): `Boolean` operands → `Boolean`. `!`: `Boolean` → `Boolean
 **Restrictions:**
 
 - `"hello" + "world"` is a type error (no string concatenation).
-- `"a" < "b"` is a type error (no string ordering).
+- `"a" < "b"` is a type error (no string ordering). `"a" == "b"` is valid.
 - `3.14 % 2` is a type error (modulus is `Int` only).
 - `true && 1` is a type error (`&&` requires `Boolean` operands; `Int` is not `Boolean`).
 - `if (1) ...` is a type error (condition must be `Boolean`).
@@ -1176,6 +1176,10 @@ The main structural elements include:
 ---
 
 ## Revision History
+
+### Version 1.2 (August 2026)
+
+Documentation consistency fix for `String` equality. The Type System already listed `==` / `!=` on `String`; the Equality Expression section and Operator table incorrectly said otherwise. They now agree: `String` equality is supported; string ordering and concatenation remain unsupported.
 
 ### Version 1.1 (July 2026)
 
